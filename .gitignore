@@ -1,0 +1,6 @@
+.vscode/
+*.csv
+bin/*
+
+!bin/.gitkeep
+!res/private/.gitkeep
