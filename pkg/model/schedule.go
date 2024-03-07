@@ -22,11 +22,11 @@ type ScheduleCSVRow struct {
 	Day        int    `csv:"day"`
 	Time       int    `csv:"time"`
 	Duration   int    `csv:"duration"`
-	Classrooms string `csv:"classrooms"`
-	Class      int    `csv:"class"`
+	Classrooms string `csv:"classroom"`
+	Class      int    `csv:"grade"`
 	Department string `csv:"department"`
 	CourseName string `csv:"course_name"`
-	Lecturer   string `csv:"lecturer"`
+	Lecturer   string `csv:"-"`
 }
 
 // NewSchedule creates an empty schedule.

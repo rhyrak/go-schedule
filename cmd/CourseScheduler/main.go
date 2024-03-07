@@ -15,8 +15,8 @@ const (
 	CoursesFile      = "./res/private/courses2.csv"
 	ExportFile       = "schedule.csv"
 	NumberOfDays     = 5
-	TimeSlotDuration = 15
-	TimeSlotCount    = 36
+	TimeSlotDuration = 60
+	TimeSlotCount    = 9
 )
 
 func main() {
