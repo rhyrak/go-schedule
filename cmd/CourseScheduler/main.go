@@ -24,7 +24,8 @@ func main() {
 	for _, c := range classrooms {
 		c.CreateSchedule(NumberOfDays, TimeSlotCount)
 	}
-	courses := csvio.LoadCourses(CoursesFile, ';')
+	ignoredCourses := []string{"ENGR450", "IE101"}
+	courses := csvio.LoadCourses(CoursesFile, ';', ignoredCourses)
 	rand.Shuffle(len(courses), func(i, j int) {
 		courses[i], courses[j] = courses[j], courses[i]
 	})
@@ -40,8 +41,10 @@ func main() {
 	valid, msg := scheduler.Validate(courses, schedule, classrooms)
 	if !valid {
 		fmt.Println("Invalid schedule:")
-		fmt.Println(msg)
+	} else {
+		fmt.Println("Passed all tests")
 	}
+	fmt.Println(msg)
 	fmt.Printf("Placed %d courses\n", placed)
 	schedule.CalculateCost()
 	fmt.Printf("Cost: %d\n", schedule.Cost)

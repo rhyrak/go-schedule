@@ -20,4 +20,5 @@ type Course struct {
 	Placed             bool       `csv:"-"`
 	Classroom          *Classroom `csv:"-"`
 	NeedsRoom          bool       `csv:"-"`
+	NeededSlots        int        `csv:"-"`
 }

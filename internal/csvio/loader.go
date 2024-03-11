@@ -13,7 +13,7 @@ import (
 )
 
 // LoadCourses reads and parses given csv file for course data.
-func LoadCourses(path string, delim rune) []*model.Course {
+func LoadCourses(path string, delim rune, ignored []string) []*model.Course {
 	var id model.CourseID = 1
 	gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
 		r := csv.NewReader(in)
@@ -34,10 +34,16 @@ func LoadCourses(path string, delim rune) []*model.Course {
 
 	courses := []*model.Course{}
 	for _, c := range _courses {
-		if c.Course_Code == "ENGR450" {
-			continue
+		ignore := false
+		for _, ignoredCourse := range ignored {
+			if c.Course_Code == ignoredCourse {
+				ignore = true
+				break
+			}
 		}
-		courses = append(courses, c)
+		if !ignore {
+			courses = append(courses, c)
+		}
 	}
 	for _, course := range courses {
 		course.CourseID = id
