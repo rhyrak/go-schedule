@@ -60,6 +60,8 @@ func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.
 					valid = false
 					message += "- Classroom " + c.Classroom.ID + " assigned multiple times\n"
 					hasClassroomCollision = true
+				} else {
+					usedRooms[c.Classroom.ID] = true
 				}
 			}
 		}

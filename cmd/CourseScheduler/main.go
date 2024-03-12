@@ -24,7 +24,7 @@ func main() {
 	for _, c := range classrooms {
 		c.CreateSchedule(NumberOfDays, TimeSlotCount)
 	}
-	ignoredCourses := []string{"ENGR450", "IE101"}
+	ignoredCourses := []string{"ENGR450", "IE101", "CENG404"}
 	courses := csvio.LoadCourses(CoursesFile, ';', ignoredCourses)
 	rand.Shuffle(len(courses), func(i, j int) {
 		courses[i], courses[j] = courses[j], courses[i]

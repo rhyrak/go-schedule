@@ -44,7 +44,7 @@ func findRoom(rooms []*model.Classroom, capacity int, day int, slot int, neededS
 		}
 		roomOk := true
 		for i := slot; i < slot+neededSlots; i++ {
-			if !c.IsAvailable(day, slot) {
+			if !c.IsAvailable(day, i) {
 				roomOk = false
 				break
 			}

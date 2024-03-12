@@ -12,7 +12,7 @@ type Classroom struct {
 
 // IsAvailable checks if classroom is occupied.
 func (c *Classroom) IsAvailable(day int, slot int) bool {
-	if day < 0 || day > c.days || slot < 0 || slot > c.slots {
+	if day < 0 || day >= c.days || slot < 0 || slot >= c.slots {
 		return false
 	}
 	return c.schedule[day][slot] == 0
