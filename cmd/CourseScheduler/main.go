@@ -21,23 +21,28 @@ const (
 
 func main() {
 	classrooms := csvio.LoadClassrooms(ClassroomsFile, ';')
-	for _, c := range classrooms {
-		c.CreateSchedule(NumberOfDays, TimeSlotCount)
-	}
 	ignoredCourses := []string{"ENGR450", "IE101", "CENG404"}
 	courses := csvio.LoadCourses(CoursesFile, ';', ignoredCourses)
-	rand.Shuffle(len(courses), func(i, j int) {
-		courses[i], courses[j] = courses[j], courses[i]
-	})
-	schedule := model.NewSchedule(NumberOfDays, TimeSlotDuration, TimeSlotCount)
 
-	placed := 0
-	for limit := 0; limit < 1000 && placed < len(courses); limit++ {
-		placed += scheduler.FillCourses(courses, schedule, classrooms)
+	var schedule *model.Schedule
+	for limit := 0; limit < 100; limit++ {
+		for _, c := range classrooms {
+			c.CreateSchedule(NumberOfDays, TimeSlotCount)
+		}
+		for _, c := range courses {
+			c.Placed = false
+		}
+		rand.Shuffle(len(courses), func(i, j int) {
+			courses[i], courses[j] = courses[j], courses[i]
+		})
+		schedule = model.NewSchedule(NumberOfDays, TimeSlotDuration, TimeSlotCount)
+		scheduler.FillCourses(courses, schedule, classrooms)
+		if valid, _ := scheduler.Validate(courses, schedule, classrooms); valid {
+			break
+		}
 	}
 
 	csvio.ExportSchedule(schedule, ExportFile)
-	csvio.PrintSchedule(schedule)
 	valid, msg := scheduler.Validate(courses, schedule, classrooms)
 	if !valid {
 		fmt.Println("Invalid schedule:")
@@ -45,7 +50,6 @@ func main() {
 		fmt.Println("Passed all tests")
 	}
 	fmt.Println(msg)
-	fmt.Printf("Placed %d courses\n", placed)
 	schedule.CalculateCost()
 	fmt.Printf("Cost: %d\n", schedule.Cost)
 }
