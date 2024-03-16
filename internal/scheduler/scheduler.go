@@ -26,7 +26,7 @@ func FillCourses(courses []*model.Course, schedule *model.Schedule, rooms []*mod
 				placed = tryPlaceIntoDay(course, schedule, dayIndex, day, rooms, schedule.TimeSlotCount/2+1)
 			}
 			if !placed {
-				placed = tryPlaceIntoDay(course, schedule, dayIndex, day, rooms, 0)
+				placed = tryPlaceIntoDay(course, schedule, dayIndex, day, rooms, 1)
 			}
 			if placed {
 				placedCount++
@@ -72,6 +72,14 @@ func shouldIgnoreDailyLimit(days []*model.Day, department string, grade int) boo
 
 func checkSlots(day *model.Day, start int, max int, needed int, course *model.Course) bool {
 	availableSlots := 0
+	// Lecturers need at least 1 hour break between classes
+	if start > 0 {
+		for _, prevCourse := range day.Slots[start-1].CourseRefs {
+			if prevCourse.Lecturer == course.Lecturer {
+				return false
+			}
+		}
+	}
 	for r := start; r < max && availableSlots < needed; r++ {
 		slotOK := true
 		for _, conflicting := range course.ConflictingCourses {
