@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"time"
 
 	"github.com/rhyrak/CourseScheduler/internal/csvio"
 	"github.com/rhyrak/CourseScheduler/internal/scheduler"
@@ -24,6 +25,7 @@ func main() {
 	ignoredCourses := []string{"ENGR450", "IE101", "CENG404"}
 	courses := csvio.LoadCourses(CoursesFile, ';', ignoredCourses)
 
+	start := time.Now().UnixNano()
 	var schedule *model.Schedule
 	for limit := 0; limit < 100; limit++ {
 		for _, c := range classrooms {
@@ -41,6 +43,7 @@ func main() {
 			break
 		}
 	}
+	end := time.Now().UnixNano()
 
 	csvio.ExportSchedule(schedule, ExportFile)
 	valid, msg := scheduler.Validate(courses, schedule, classrooms)
@@ -52,4 +55,5 @@ func main() {
 	fmt.Println(msg)
 	schedule.CalculateCost()
 	fmt.Printf("Cost: %d\n", schedule.Cost)
+	fmt.Printf("Timer: %f ms\n", float64(end-start)/1000000.0)
 }

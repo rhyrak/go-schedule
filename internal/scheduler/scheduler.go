@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"math"
+	"sort"
 
 	"github.com/rhyrak/CourseScheduler/pkg/model"
 )
@@ -9,6 +10,9 @@ import (
 // FillCourses tries to assign a time and room for all unassigned courses.
 // Returns the number of newly assigned courses.
 func FillCourses(courses []*model.Course, schedule *model.Schedule, rooms []*model.Classroom) int {
+	sort.Slice(rooms, func(i, j int) bool {
+		return rooms[i].Capacity < rooms[j].Capacity
+	})
 	placedCount := 0
 	for _, course := range courses {
 		if course.Placed {
