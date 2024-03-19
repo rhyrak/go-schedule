@@ -1,4 +1,4 @@
-module github.com/rhyrak/CourseScheduler
+module github.com/rhyrak/go-schedule
 
 go 1.22.0
 

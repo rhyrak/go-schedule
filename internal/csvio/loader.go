@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/gocarina/gocsv"
-	"github.com/rhyrak/CourseScheduler/pkg/model"
+	"github.com/rhyrak/go-schedule/pkg/model"
 )
 
 // LoadCourses reads and parses given csv file for course data.

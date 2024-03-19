@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/gocarina/gocsv"
-	"github.com/rhyrak/CourseScheduler/pkg/model"
+	"github.com/rhyrak/go-schedule/pkg/model"
 )
 
 // ExportSchedule formats the schedule data into ScheduleCSVRow structs and

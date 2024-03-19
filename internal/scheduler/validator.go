@@ -3,7 +3,7 @@ package scheduler
 import (
 	"fmt"
 
-	"github.com/rhyrak/CourseScheduler/pkg/model"
+	"github.com/rhyrak/go-schedule/pkg/model"
 )
 
 // Validate checks schedule for conflicts and unassigned courses.

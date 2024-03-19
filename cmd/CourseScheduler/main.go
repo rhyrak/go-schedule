@@ -5,9 +5,9 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/rhyrak/CourseScheduler/internal/csvio"
-	"github.com/rhyrak/CourseScheduler/internal/scheduler"
-	"github.com/rhyrak/CourseScheduler/pkg/model"
+	"github.com/rhyrak/go-schedule/internal/csvio"
+	"github.com/rhyrak/go-schedule/internal/scheduler"
+	"github.com/rhyrak/go-schedule/pkg/model"
 )
 
 // Program parameters

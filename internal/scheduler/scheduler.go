@@ -4,7 +4,7 @@ import (
 	"math"
 	"sort"
 
-	"github.com/rhyrak/CourseScheduler/pkg/model"
+	"github.com/rhyrak/go-schedule/pkg/model"
 )
 
 // FillCourses tries to assign a time and room for all unassigned courses.
