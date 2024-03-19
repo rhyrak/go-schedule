@@ -12,8 +12,8 @@ func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.
 	var message string
 	var valid bool = true
 	var allAssigned bool
-	var hasCourseCollision bool = false
-	var hasClassroomCollision bool = false
+	var hasCourseCollision bool
+	var hasClassroomCollision bool
 
 	unassignedCount := 0
 	var unassignedCourses []*model.Course
@@ -25,7 +25,6 @@ func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.
 	}
 
 	if unassignedCount > 0 {
-		valid = false
 		message = fmt.Sprintf("- There are %d unassigned courses:\n", unassignedCount)
 		for _, un := range unassignedCourses {
 			message += fmt.Sprintf("    %s %s %d %s\n", un.Course_Code, un.DepartmentCode, un.Number_of_Students, un.Lecturer)
@@ -43,16 +42,19 @@ func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.
 
 	if hasClassroomCollision {
 		message = "[FAIL]: Classroom collision check.\n" + message
+		valid = false
 	} else {
 		message = "[  OK]: Classroom collision check.\n" + message
 	}
 	if hasCourseCollision {
 		message = "[FAIL]: Course collision check.\n" + message
+		valid = false
 	} else {
 		message = "[  OK]: Course collision check.\n" + message
 	}
 	if !allAssigned {
 		message = "[FAIL]: Course has room check.\n" + message
+		valid = false
 	} else {
 		message = "[  OK]: Course has room check.\n" + message
 	}
