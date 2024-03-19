@@ -13,7 +13,7 @@ import (
 // Program parameters
 const (
 	ClassroomsFile   = "./res/private/classrooms.csv"
-	CoursesFile      = "./res/private/courses2.csv"
+	CoursesFile      = "./res/private/courses3.csv"
 	ExportFile       = "schedule.csv"
 	NumberOfDays     = 5
 	TimeSlotDuration = 60
@@ -27,7 +27,8 @@ func main() {
 
 	start := time.Now().UnixNano()
 	var schedule *model.Schedule
-	for limit := 0; limit < 100; limit++ {
+	var iter int32
+	for iter = 1; iter <= 2000; iter++ {
 		for _, c := range classrooms {
 			c.CreateSchedule(NumberOfDays, TimeSlotCount)
 		}
@@ -55,5 +56,6 @@ func main() {
 	fmt.Println(msg)
 	schedule.CalculateCost()
 	fmt.Printf("Cost: %d\n", schedule.Cost)
+	fmt.Printf("Iteration: %d\n", iter)
 	fmt.Printf("Timer: %f ms\n", float64(end-start)/1000000.0)
 }

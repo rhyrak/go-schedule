@@ -1,7 +1,10 @@
 all: run
 
 build:
-	@go build -o bin/CourseScheduler.exe cmd/CourseScheduler/main.go
+	@go build -o bin/CourseScheduler cmd/CourseScheduler/main.go
 
 run: build
-	@bin/CourseScheduler.exe
+	@bin/CourseScheduler
+
+clean:
+	@rm schedule.csv -f && rm bin/CourseScheduler -f
