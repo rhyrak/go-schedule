@@ -14,7 +14,6 @@ import (
 
 // LoadCourses reads and parses given csv file for course data.
 func LoadCourses(path string, delim rune, ignored []string) []*model.Course {
-	var id model.CourseID = 1
 	gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
 		r := csv.NewReader(in)
 		r.Comma = delim
@@ -45,6 +44,38 @@ func LoadCourses(path string, delim rune, ignored []string) []*model.Course {
 			courses = append(courses, c)
 		}
 	}
+
+	assignCourseProperties(courses)
+	findConflictingCourses(courses)
+
+	return courses
+}
+
+// LoadClassrooms reads and parses given csv file for classroom data.
+func LoadClassrooms(path string, delim rune) []*model.Classroom {
+	gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
+		r := csv.NewReader(in)
+		r.Comma = delim
+		return r
+	})
+
+	classroomsFile, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, os.ModePerm)
+	if err != nil {
+		panic(err)
+	}
+	defer classroomsFile.Close()
+
+	classrooms := []*model.Classroom{}
+
+	if err := gocsv.UnmarshalFile(classroomsFile, &classrooms); err != nil {
+		panic(err)
+	}
+
+	return classrooms
+}
+
+func assignCourseProperties(courses []*model.Course) {
+	var id model.CourseID = 1
 	for _, course := range courses {
 		course.CourseID = id
 		id++
@@ -65,6 +96,9 @@ func LoadCourses(path string, delim rune, ignored []string) []*model.Course {
 		}
 		course.NeedsRoom = course.Course_Environment == "classroom"
 	}
+}
+
+func findConflictingCourses(courses []*model.Course) {
 	for _, c1 := range courses {
 		for _, c2 := range courses {
 			if c1.CourseID == c2.CourseID {
@@ -104,29 +138,4 @@ func LoadCourses(path string, delim rune, ignored []string) []*model.Course {
 			}
 		}
 	}
-
-	return courses
-}
-
-// LoadClassrooms reads and parses given csv file for classroom data.
-func LoadClassrooms(path string, delim rune) []*model.Classroom {
-	gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
-		r := csv.NewReader(in)
-		r.Comma = delim
-		return r
-	})
-
-	classroomsFile, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, os.ModePerm)
-	if err != nil {
-		panic(err)
-	}
-	defer classroomsFile.Close()
-
-	classrooms := []*model.Classroom{}
-
-	if err := gocsv.UnmarshalFile(classroomsFile, &classrooms); err != nil {
-		panic(err)
-	}
-
-	return classrooms
 }

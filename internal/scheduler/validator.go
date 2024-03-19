@@ -11,7 +11,7 @@ import (
 func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.Classroom) (bool, string) {
 	var message string
 	var valid bool = true
-	var allAssigned bool = false
+	var allAssigned bool
 	var hasCourseCollision bool = false
 	var hasClassroomCollision bool = false
 
@@ -33,39 +33,13 @@ func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.
 	}
 	allAssigned = unassignedCount == 0
 
-	for _, day := range schedule.Days {
-		for _, slot := range day.Slots {
-			for _, c1 := range slot.CourseRefs {
-				for _, c2 := range slot.Courses {
-					if contains(c1.ConflictingCourses, c2) {
-						valid = false
-						message += "Conflicting courses placed at the same time\n"
-						hasCourseCollision = true
-					}
-				}
-			}
-		}
-	}
+	ok, msg := checkCourseCollision(schedule)
+	hasCourseCollision = !ok
+	message += msg
 
-	for _, day := range schedule.Days {
-		for _, slot := range day.Slots {
-			var usedRooms map[string]bool = make(map[string]bool)
-			for _, c := range slot.CourseRefs {
-				if c.Classroom == nil {
-					continue
-				}
-				_, usedBefore := usedRooms[c.Classroom.ID]
-				if usedBefore {
-					schedule.Cost++
-					valid = false
-					message += "- Classroom " + c.Classroom.ID + " assigned multiple times\n"
-					hasClassroomCollision = true
-				} else {
-					usedRooms[c.Classroom.ID] = true
-				}
-			}
-		}
-	}
+	ok, msg = checkClassroomCollision(schedule)
+	hasClassroomCollision = !ok
+	message += msg
 
 	if hasClassroomCollision {
 		message = "[FAIL]: Classroom collision check.\n" + message
@@ -83,6 +57,48 @@ func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.
 		message = "[  OK]: Course has room check.\n" + message
 	}
 
+	return valid, message
+}
+
+func checkCourseCollision(schedule *model.Schedule) (bool, string) {
+	valid := true
+	message := ""
+	for _, day := range schedule.Days {
+		for _, slot := range day.Slots {
+			for _, c1 := range slot.CourseRefs {
+				for _, c2 := range slot.Courses {
+					if contains(c1.ConflictingCourses, c2) {
+						valid = false
+						message += "Conflicting courses placed at the same time\n"
+					}
+				}
+			}
+		}
+	}
+	return valid, message
+}
+
+func checkClassroomCollision(schedule *model.Schedule) (bool, string) {
+	valid := true
+	message := ""
+	for _, day := range schedule.Days {
+		for _, slot := range day.Slots {
+			var usedRooms map[string]bool = make(map[string]bool)
+			for _, c := range slot.CourseRefs {
+				if c.Classroom == nil {
+					continue
+				}
+				_, usedBefore := usedRooms[c.Classroom.ID]
+				if usedBefore {
+					schedule.Cost++
+					valid = false
+					message += "- Classroom " + c.Classroom.ID + " assigned multiple times\n"
+				} else {
+					usedRooms[c.Classroom.ID] = true
+				}
+			}
+		}
+	}
 	return valid, message
 }
 
