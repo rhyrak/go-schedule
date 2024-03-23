@@ -10,7 +10,7 @@ type Classroom struct {
 	slots         int          `csv:"-"`
 }
 
-// IsAvailable checks if classroom is occupied.
+/* IsAvailable checks if classroom is occupied. */
 func (c *Classroom) IsAvailable(day int, slot int) bool {
 	if day < 0 || day >= c.days || slot < 0 || slot >= c.slots {
 		return false
@@ -18,7 +18,7 @@ func (c *Classroom) IsAvailable(day int, slot int) bool {
 	return c.schedule[day][slot] == 0
 }
 
-// CreateSchedule creates an empty schedule.
+/* CreateSchedule creates an empty schedule. */
 func (c *Classroom) CreateSchedule(day int, slot int) {
 	c.days = day
 	c.slots = slot
@@ -33,8 +33,8 @@ func (c *Classroom) CreateSchedule(day int, slot int) {
 	}
 }
 
-// PlaceCourse checks schedule and places course into given time.
-// Returns false if the classroom was occupied.
+/* PlaceCourse checks schedule and places course into given time. */
+/* Returns false if the classroom was occupied. */
 func (c *Classroom) PlaceCourse(day int, slot int, course CourseID) bool {
 	if c.IsAvailable(day, slot) {
 		c.schedule[day][slot] = course

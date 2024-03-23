@@ -7,8 +7,8 @@ import (
 	"github.com/rhyrak/go-schedule/pkg/model"
 )
 
-// FillCourses tries to assign a time and room for all unassigned courses.
-// Returns the number of newly assigned courses.
+/* FillCourses tries to assign a time and room for all unassigned courses. */
+/* Returns the number of newly assigned courses. */
 func FillCourses(courses []*model.Course, schedule *model.Schedule, rooms []*model.Classroom) int {
 	sort.Slice(rooms, func(i, j int) bool {
 		return rooms[i].Capacity < rooms[j].Capacity
@@ -76,7 +76,7 @@ func shouldIgnoreDailyLimit(days []*model.Day, department string, grade int) boo
 
 func checkSlots(day *model.Day, start int, max int, needed int, course *model.Course) bool {
 	availableSlots := 0
-	// Lecturers need at least 1 hour break between classes
+	/* Lecturers need at least 1 hour break between classes */
 	if start > 0 {
 		for _, prevCourse := range day.Slots[start-1].CourseRefs {
 			if prevCourse.Lecturer == course.Lecturer {

@@ -10,8 +10,8 @@ import (
 	"github.com/rhyrak/go-schedule/pkg/model"
 )
 
-// ExportSchedule formats the schedule data into ScheduleCSVRow structs and
-// writes it to the CSV file specified by the given path.
+/* ExportSchedule formats the schedule data into ScheduleCSVRow structs and */
+/* writes it to the CSV file specified by the given path. */
 func ExportSchedule(schedule *model.Schedule, path string) {
 	nice := formatAndFilterSchedule(schedule)
 	out, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.ModePerm)
@@ -25,7 +25,7 @@ func ExportSchedule(schedule *model.Schedule, path string) {
 	}
 }
 
-// PrintSchedule prints weekly schedule grouped by department name.
+/* PrintSchedule prints weekly schedule grouped by department name. */
 func PrintSchedule(schedule *model.Schedule) {
 	days := []string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday"}
 	deps := make(map[string]bool, 10)
