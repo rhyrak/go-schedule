@@ -14,6 +14,8 @@ import (
 const (
 	ClassroomsFile   = "./res/private/classrooms.csv"
 	CoursesFile      = "./res/private/courses2.csv"
+	PriorityFile     = "./res/private/reserved.csv"
+	BlacklistFile    = "./res/private/busy.csv"
 	ExportFile       = "schedule.csv"
 	NumberOfDays     = 5
 	TimeSlotDuration = 60
@@ -26,7 +28,11 @@ func main() {
 	ignoredCourses := []string{"ENGR450", "IE101", "CENG404"}
 	/* Parse and instantiate course objects from CSV (ignored courses are not loaded) */
 	/* Also assign additional attributes and find conflicting courses*/
-	courses := csvio.LoadCourses(CoursesFile, ';', ignoredCourses)
+	courses, reserved := csvio.LoadCourses(CoursesFile, PriorityFile, ';', ignoredCourses)
+
+	for _, r := range reserved {
+		fmt.Println(r.CourseRef.Course_Code)
+	}
 
 	start := time.Now().UnixNano()
 	var schedule *model.Schedule
@@ -47,6 +53,7 @@ func main() {
 		/* Initialize an empty schedule to hold course data */
 		schedule = model.NewSchedule(NumberOfDays, TimeSlotDuration, TimeSlotCount)
 		/* Fill the empty schedule with course data and assign classrooms to courses */
+		scheduler.PlaceReservedCourses(reserved, schedule, classrooms)
 		scheduler.FillCourses(courses, schedule, classrooms)
 		/* If schedule is valid, break, if not, shove everything out the window and try again (5dk) */
 		if valid, _ := scheduler.Validate(courses, schedule, classrooms); valid {

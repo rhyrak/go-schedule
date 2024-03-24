@@ -12,15 +12,30 @@ import (
 	"github.com/rhyrak/go-schedule/pkg/model"
 )
 
+/* extract substring from a string */
+func substr(input string, start int, length int) string {
+	asRunes := []rune(input)
+
+	if start >= len(asRunes) {
+		return ""
+	}
+
+	if start+length > len(asRunes) {
+		length = len(asRunes) - start
+	}
+
+	return string(asRunes[start : start+length])
+}
+
 /* LoadCourses reads and parses given csv file for course data. */
-func LoadCourses(path string, delim rune, ignored []string) []*model.Course {
+func LoadCourses(pathToCourses string, pathToReserved string, delim rune, ignored []string) ([]*model.Course, []*model.Reserved) {
 	gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
 		r := csv.NewReader(in)
 		r.Comma = delim
 		return r
 	})
 
-	coursesFile, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, os.ModePerm)
+	coursesFile, err := os.OpenFile(pathToCourses, os.O_RDWR|os.O_CREATE, os.ModePerm)
 	if err != nil {
 		panic(err)
 	}
@@ -31,6 +46,18 @@ func LoadCourses(path string, delim rune, ignored []string) []*model.Course {
 		panic(err)
 	}
 
+	priorityFile, err := os.OpenFile(pathToReserved, os.O_RDWR|os.O_CREATE, os.ModePerm)
+	if err != nil {
+		panic(err)
+	}
+	defer priorityFile.Close()
+
+	_reserved := []*model.Reserved{}
+	if err := gocsv.UnmarshalFile(priorityFile, &_reserved); err != nil {
+		panic(err)
+	}
+
+	reserved := []*model.Reserved{}
 	courses := []*model.Course{}
 	for _, c := range _courses {
 		ignore := false
@@ -41,6 +68,14 @@ func LoadCourses(path string, delim rune, ignored []string) []*model.Course {
 			}
 		}
 		if !ignore {
+			for _, reservedCourse := range _reserved {
+				if c.Course_Code == reservedCourse.CourseCodeSTR {
+					c.Reserved = true
+					assignReservedCourseProperties(c, reservedCourse)
+					reserved = append(reserved, reservedCourse)
+					break
+				}
+			}
 			courses = append(courses, c)
 		}
 	}
@@ -48,7 +83,7 @@ func LoadCourses(path string, delim rune, ignored []string) []*model.Course {
 	assignCourseProperties(courses)
 	findConflictingCourses(courses)
 
-	return courses
+	return courses, reserved
 }
 
 /* LoadClassrooms reads and parses given csv file for classroom data. */
@@ -145,4 +180,59 @@ func findConflictingCourses(courses []*model.Course) {
 			}
 		}
 	}
+}
+
+func assignReservedCourseProperties(course *model.Course, reserved *model.Reserved) {
+	startHH, err0 := strconv.Atoi(substr(reserved.StartingTimeSTR, 0, 2))
+	if err0 != nil {
+		fmt.Printf("Formatting error %d at %s inside reserved.csv, Starting_Time should be formatted as HH:MM\n", startHH, course.Course_Code)
+		panic(err0)
+	}
+	if startHH > 16 || startHH < 8 {
+		fmt.Printf("Formatting error %d at %s inside reserved.csv, Should be restricted between 08:xx and 16:xx\n", startHH, course.Course_Code)
+		os.Exit(1)
+	}
+	//fmt.Println(startHH)
+
+	startMM, err1 := strconv.Atoi(substr(reserved.StartingTimeSTR, 3, 2))
+	if err1 != nil {
+		fmt.Printf("Formatting error %d at %s inside reserved.csv, Starting_Time should be formatted as HH:MM\n", startMM, course.Course_Code)
+		panic(err1)
+	}
+	if startMM > 59 || startMM < 0 {
+		fmt.Printf("Formatting error %d at %s inside reserved.csv, Should be restricted between xx:00 and xx:59\n", startMM, course.Course_Code)
+		os.Exit(1)
+	}
+	//fmt.Println(startMM)
+
+	/* Convert starting time to timeslot index (0-8) */
+	startingSlotIndex := ((startHH-8)*60+(startMM+30))/60 - 1
+	//fmt.Println(startingSlotIndex)
+
+	/* Convert desired day to day index (0-4) */
+	var DesiredDay int
+	switch reserved.DaySTR {
+	case "Monday":
+		DesiredDay = 0
+	case "Tuesday":
+		DesiredDay = 1
+	case "Wednesday":
+		DesiredDay = 2
+	case "Thursday":
+		DesiredDay = 3
+	case "Friday":
+		DesiredDay = 4
+	default:
+		fmt.Printf("Formatting error %s at %s inside reserved.csv, Day should be restricted between Monday and Friday using PascalCase\n", reserved.DaySTR, course.Course_Code)
+		os.Exit(1)
+	}
+
+	/* Assign new properties and hold course reference inside reserved object */
+	course.Reserved = true
+	course.ReservedDay = DesiredDay
+	course.ReservedStartingTimeSlot = startingSlotIndex
+	reserved.CourseRef = course
+
+	//fmt.Println(reserved.CourseRef.Course_Code)
+
 }
