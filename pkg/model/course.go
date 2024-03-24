@@ -24,4 +24,5 @@ type Course struct {
 	Reserved                 bool       `csv:"-"`
 	ReservedStartingTimeSlot int        `csv:"-"`
 	ReservedDay              int        `csv:"-"`
+	BusyDays                 []int      `csv:"-"`
 }

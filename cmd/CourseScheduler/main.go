@@ -28,10 +28,19 @@ func main() {
 	ignoredCourses := []string{"ENGR450", "IE101", "CENG404"}
 	/* Parse and instantiate course objects from CSV (ignored courses are not loaded) */
 	/* Also assign additional attributes and find conflicting courses*/
-	courses, reserved := csvio.LoadCourses(CoursesFile, PriorityFile, ';', ignoredCourses)
+	courses, reserved, busy := csvio.LoadCourses(CoursesFile, PriorityFile, BlacklistFile, ';', ignoredCourses)
 
-	for _, r := range reserved {
-		fmt.Println(r.CourseRef.Course_Code)
+	fmt.Println("Professors with their busy schedules are as below:")
+	for _, b := range busy {
+		fmt.Print(b.Lecturer + " ")
+		fmt.Println(b.Day)
+	}
+
+	fmt.Println("")
+
+	fmt.Println("Courses reserved to certain days and hours are as below:")
+	for _, c := range reserved {
+		fmt.Println(c.CourseCodeSTR + " " + c.DaySTR + " " + c.StartingTimeSTR)
 	}
 
 	start := time.Now().UnixNano()

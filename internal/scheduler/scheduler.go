@@ -1,8 +1,8 @@
 package scheduler
 
 import (
-	"fmt"
 	"math"
+	"slices"
 	"sort"
 
 	"github.com/rhyrak/go-schedule/pkg/model"
@@ -26,16 +26,18 @@ func FillCourses(courses []*model.Course, schedule *model.Schedule, rooms []*mod
 			if !ignoreDailyLimit && day.GradeCounter[course.DepartmentCode][course.Class] >= 2 {
 				continue
 			}
-			var placed bool
-			if day.GradeCounter[course.DepartmentCode][course.Class] > 0 {
-				placed = tryPlaceIntoDay(course, schedule, dayIndex, day, rooms, schedule.TimeSlotCount/2+1)
-			}
-			if !placed {
-				placed = tryPlaceIntoDay(course, schedule, dayIndex, day, rooms, 1)
-			}
-			if placed {
-				placedCount++
-				break
+			if !slices.Contains(course.BusyDays, dayIndex) {
+				var placed bool
+				if day.GradeCounter[course.DepartmentCode][course.Class] > 0 {
+					placed = tryPlaceIntoDay(course, schedule, dayIndex, day, rooms, schedule.TimeSlotCount/2+1)
+				}
+				if !placed {
+					placed = tryPlaceIntoDay(course, schedule, dayIndex, day, rooms, 1)
+				}
+				if placed {
+					placedCount++
+					break
+				}
 			}
 		}
 	}
@@ -52,7 +54,7 @@ func PlaceReservedCourses(courses []*model.Reserved, schedule *model.Schedule, r
 			continue
 		}
 		course.CourseRef.NeededSlots = int(math.Ceil(float64(course.CourseRef.Duration) / float64(schedule.TimeSlotDuration)))
-		fmt.Println(course.CourseRef.NeededSlots)
+		//fmt.Println(course.CourseRef.NeededSlots)
 		shouldIgnoreDailyLimit(schedule.Days, course.CourseRef.DepartmentCode, course.CourseRef.Class)
 
 		placed := tryPlaceIntoDay(course.CourseRef, schedule, course.CourseRef.ReservedDay, schedule.Days[course.CourseRef.ReservedDay], rooms, course.CourseRef.ReservedStartingTimeSlot)
@@ -139,33 +141,6 @@ func tryPlaceIntoDay(course *model.Course, schedule *model.Schedule,
 		if canFit && (classroom != nil || !course.NeedsRoom) {
 			course.Placed = true
 			day.GradeCounter[course.DepartmentCode][course.Class]++
-			if classroom != nil {
-				course.Classroom = classroom
-			}
-			for i := start; i < start+course.NeededSlots; i++ {
-				day.Slots[i].Courses = append(day.Slots[i].Courses, course.CourseID)
-				day.Slots[i].CourseRefs = append(day.Slots[i].CourseRefs, course)
-				if classroom != nil {
-					classroom.PlaceCourse(dayIndex, i, course.CourseID)
-				}
-			}
-			break
-		}
-	}
-	return course.Placed
-}
-
-func PlaceIntoDay(course *model.Course, schedule *model.Schedule,
-	dayIndex int, day *model.Day, rooms []*model.Classroom, startingSlot int) bool {
-	for start := startingSlot; start < schedule.TimeSlotCount; start++ {
-		canFit := checkSlots(day, start, schedule.TimeSlotCount, course.NeededSlots, course)
-		var classroom *model.Classroom = nil
-		if course.NeedsRoom {
-			expectedPopulation := float32(course.Number_of_Students) * 0.8
-			classroom = findRoom(rooms, int(expectedPopulation), dayIndex, start, course.NeededSlots)
-		}
-		if canFit && (classroom != nil || !course.NeedsRoom) {
-			course.Placed = true
 			if classroom != nil {
 				course.Classroom = classroom
 			}
