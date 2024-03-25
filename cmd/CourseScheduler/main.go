@@ -12,15 +12,16 @@ import (
 
 // Program parameters
 const (
-	ClassroomsFile   = "./res/private/classrooms.csv"
-	CoursesFile      = "./res/private/courses2.csv"
-	PriorityFile     = "./res/private/reserved.csv"
-	BlacklistFile    = "./res/private/busy.csv"
-	MandatoryFile    = "./res/private/mandatory.csv"
-	ExportFile       = "schedule.csv"
-	NumberOfDays     = 5
-	TimeSlotDuration = 60
-	TimeSlotCount    = 9
+	ClassroomsFile      = "./res/private/classrooms.csv"
+	CoursesFile         = "./res/private/courses2.csv"
+	PriorityFile        = "./res/private/reserved.csv"
+	BlacklistFile       = "./res/private/busy.csv"
+	MandatoryFile       = "./res/private/mandatory.csv"
+	ExportFile          = "schedule"
+	ExportFileExtension = ".csv"
+	NumberOfDays        = 5
+	TimeSlotDuration    = 60
+	TimeSlotCount       = 9
 )
 
 func main() {
@@ -48,7 +49,7 @@ func main() {
 	var schedule *model.Schedule
 	var iter int32
 	// Try to create a valid schedule upto 2000 times
-	for iter = 1; iter <= 2000; iter++ {
+	for iter = 1; iter <= 10000; iter++ {
 		for _, c := range classrooms {
 			// Initialize an empty classroom-oriented schedule to keep track of classroom utilization throughout the week
 			c.CreateSchedule(NumberOfDays, TimeSlotCount)
@@ -73,7 +74,7 @@ func main() {
 	end := time.Now().UnixNano()
 
 	// Write newly created schedule to disk
-	csvio.ExportSchedule(schedule, ExportFile)
+	outPath := csvio.ExportSchedule(schedule, ExportFile, ExportFileExtension)
 	// Validate and print error messages
 	valid, msg := scheduler.Validate(courses, schedule, classrooms)
 	if !valid {
@@ -87,4 +88,5 @@ func main() {
 	fmt.Printf("Cost: %d\n", schedule.Cost)
 	fmt.Printf("Iteration: %d\n", iter)
 	fmt.Printf("Timer: %f ms\n", float64(end-start)/1000000.0)
+	fmt.Println("Exported output to: " + outPath)
 }

@@ -195,14 +195,11 @@ func findConflictingCourses(courses []*model.Course) {
 			if c1.Class == c2.Class && c1.DepartmentCode == c2.DepartmentCode {
 				conflict = true
 			}
-			// This part is probably to prevent conflicts between neighbouring classes (e.g., 1&2, 2&3, 3&4 and vice versa 2&1, 3&2, 4&3)
-			// Currently prevents creation of a valid schedule due to shear amount of courses for each class
-			// Needs additional Mandatory/Elective course data to make smarter decisions on whether to allow/disallow conflict of courses
-			/*
-				if c1.DepartmentCode == c2.DepartmentCode && (c1.Class-c2.Class == 1 || c1.Class-c2.Class == -1) {
-					conflict = true
-				}
-			*/
+
+			// This part makes sure that neighbouring classes (e.g., 1&2, 2&3, 3&4 and vice versa 2&1, 3&2, 4&3) don't conflict with each other (except Elective courses)
+			if (c1.DepartmentCode == c2.DepartmentCode) && (c1.Class-c2.Class == 1 || c1.Class-c2.Class == -1) && (c1.Compulsory && c2.Compulsory) {
+				conflict = true
+			}
 
 			if conflict {
 				c1HasC2 := false

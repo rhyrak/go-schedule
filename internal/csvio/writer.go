@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gocarina/gocsv"
 	"github.com/rhyrak/go-schedule/pkg/model"
@@ -12,8 +14,11 @@ import (
 
 // ExportSchedule formats the schedule data into ScheduleCSVRow structs and
 // writes it to the CSV file specified by the given path.
-func ExportSchedule(schedule *model.Schedule, path string) {
+func ExportSchedule(schedule *model.Schedule, path string, extension string) string {
 	nice := formatAndFilterSchedule(schedule)
+	// Get epoch timestamp and append it to file name
+	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano(), 10)
+	path = path + "_" + timestamp + extension
 	// Remove file if exists
 	_, err := os.Stat(path)
 	if err == nil {
@@ -32,6 +37,8 @@ func ExportSchedule(schedule *model.Schedule, path string) {
 	if err != nil {
 		panic(err)
 	}
+
+	return path
 }
 
 // PrintSchedule prints weekly schedule grouped by department name.
