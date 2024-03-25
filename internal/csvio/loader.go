@@ -13,7 +13,7 @@ import (
 	"github.com/rhyrak/go-schedule/pkg/model"
 )
 
-/* extract substring from a string */
+// extract substring from a string
 func substr(input string, start int, length int) string {
 	asRunes := []rune(input)
 
@@ -28,7 +28,7 @@ func substr(input string, start int, length int) string {
 	return string(asRunes[start : start+length])
 }
 
-/* LoadCourses reads and parses given csv file for course data. */
+// LoadCourses reads and parses given csv file for course data.
 func LoadCourses(pathToCourses string, pathToReserved string, pathToBusy string, delim rune, ignored []string) ([]*model.Course, []*model.Reserved, []*model.Busy) {
 	gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
 		r := csv.NewReader(in)
@@ -100,7 +100,7 @@ func LoadCourses(pathToCourses string, pathToReserved string, pathToBusy string,
 	return courses, reserved, busy
 }
 
-/* LoadClassrooms reads and parses given csv file for classroom data. */
+// LoadClassrooms reads and parses given csv file for classroom data.
 func LoadClassrooms(path string, delim rune) []*model.Classroom {
 	gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
 		r := csv.NewReader(in)
@@ -123,7 +123,7 @@ func LoadClassrooms(path string, delim rune) []*model.Classroom {
 	return classrooms
 }
 
-/* Determine duration and course environment and busy days */
+// Determine duration and course environment and busy days
 func assignCourseProperties(courses []*model.Course, busy []*model.Busy) {
 	var id model.CourseID = 1
 	for _, course := range courses {
@@ -154,7 +154,7 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy) {
 	}
 }
 
-/* Collect and store conflicting courses of given course */
+// Collect and store conflicting courses of given course
 func findConflictingCourses(courses []*model.Course) {
 	for _, c1 := range courses {
 		for _, c2 := range courses {
@@ -168,14 +168,15 @@ func findConflictingCourses(courses []*model.Course) {
 			if c1.Class == c2.Class && c1.DepartmentCode == c2.DepartmentCode {
 				conflict = true
 			}
-			/* This part is probably to prevent conflicts between neighbouring classes (e.g., 1&2, 2&3, 3&4 and vice versa 2&1, 3&2, 4&3) */
-			/* Currently prevents creation of a valid schedule due to shear amount of courses for each class */
-			/* Needs additional Mandatory/Elective course data to make smarter decisions on whether to allow/disallow conflict of courses */
+			// This part is probably to prevent conflicts between neighbouring classes (e.g., 1&2, 2&3, 3&4 and vice versa 2&1, 3&2, 4&3)
+			// Currently prevents creation of a valid schedule due to shear amount of courses for each class
+			// Needs additional Mandatory/Elective course data to make smarter decisions on whether to allow/disallow conflict of courses
 			/*
 				if c1.DepartmentCode == c2.DepartmentCode && (c1.Class-c2.Class == 1 || c1.Class-c2.Class == -1) {
 					conflict = true
 				}
 			*/
+
 			if conflict {
 				c1HasC2 := false
 				c2HasC1 := false
@@ -223,10 +224,10 @@ func assignReservedCourseProperties(course *model.Course, reserved *model.Reserv
 		os.Exit(1)
 	}
 
-	/* Convert starting time to timeslot index (0-8) */
+	// Convert starting time to timeslot index (0-8)
 	startingSlotIndex := ((startHH-8)*60+(startMM+30))/60 - 1
 
-	/* Convert desired day to day index (0-4) */
+	// Convert desired day to day index (0-4)
 	var DesiredDay int
 	switch reserved.DaySTR {
 	case "Monday":
@@ -244,7 +245,7 @@ func assignReservedCourseProperties(course *model.Course, reserved *model.Reserv
 		os.Exit(1)
 	}
 
-	/* Assign new properties and hold course reference inside reserved object */
+	// Assign new properties and hold course reference inside reserved object
 	course.Reserved = true
 	course.ReservedDay = DesiredDay
 	course.ReservedStartingTimeSlot = startingSlotIndex
@@ -258,7 +259,7 @@ func mergeBusyDays(busy []*model.Busy, multibusy []*model.BusyCSV) []*model.Busy
 		b0.Lecturer = b1.Lecturer
 		b0.Day = append(b0.Day, busyDay1)
 		for _, b2 := range multibusy {
-			/* Check if one professor has more than one busy day */
+			// Check if one professor has more than one busy day
 			if b1.Lecturer == b2.Lecturer && b1.DaySTR != b2.DaySTR {
 				busyDay2 := DayToInt(b2.DaySTR, b2.Lecturer)
 				b0.Day = append(b0.Day, busyDay2)
@@ -279,7 +280,7 @@ func mergeBusyDays(busy []*model.Busy, multibusy []*model.BusyCSV) []*model.Busy
 	return busy
 }
 
-/* Convert busy day to day index (0-4) */
+// Convert busy day to day index (0-4)
 func DayToInt(DaySTR string, Lecturer string) int {
 	switch DaySTR {
 	case "Monday":
