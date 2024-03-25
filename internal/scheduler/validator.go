@@ -6,8 +6,8 @@ import (
 	"github.com/rhyrak/go-schedule/pkg/model"
 )
 
-// Validate checks schedule for conflicts and unassigned courses.
-// Returns false and a message for invalid schedules.
+/* Validate checks schedule for conflicts and unassigned courses. */
+/* Returns false and a message for invalid schedules. */
 func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.Classroom) (bool, string) {
 	var message string
 	var valid bool = true

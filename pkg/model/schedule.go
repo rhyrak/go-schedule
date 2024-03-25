@@ -29,7 +29,7 @@ type ScheduleCSVRow struct {
 	Lecturer   string `csv:"lecturer"`
 }
 
-// NewSchedule creates an empty schedule.
+/* NewSchedule creates an empty schedule. */
 func NewSchedule(days int, timeSlotDuration int, timeSlotCount int) *Schedule {
 	schedule := Schedule{Days: make([]*Day, days), TimeSlotDuration: timeSlotDuration, TimeSlotCount: timeSlotCount}
 	for i := range schedule.Days {
@@ -43,7 +43,7 @@ func NewSchedule(days int, timeSlotDuration int, timeSlotCount int) *Schedule {
 	return &schedule
 }
 
-// CalculateCost calculates cost based on conflicting course proximity.
+/* CalculateCost calculates cost based on conflicting course proximity. */
 func (s *Schedule) CalculateCost() {
 	s.Cost = 0
 	for _, day := range s.Days {
