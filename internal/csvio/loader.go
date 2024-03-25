@@ -29,7 +29,7 @@ func substr(input string, start int, length int) string {
 }
 
 // LoadCourses reads and parses given csv file for course data.
-func LoadCourses(pathToCourses string, pathToReserved string, pathToBusy string, delim rune, ignored []string) ([]*model.Course, []*model.Reserved, []*model.Busy) {
+func LoadCourses(pathToCourses string, pathToReserved string, pathToBusy string, pathToMandatory string, delim rune, ignored []string) ([]*model.Course, []*model.Reserved, []*model.Busy) {
 	gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
 		r := csv.NewReader(in)
 		r.Comma = delim
@@ -69,6 +69,17 @@ func LoadCourses(pathToCourses string, pathToReserved string, pathToBusy string,
 		panic(err)
 	}
 
+	mandatoryFile, err := os.OpenFile(pathToMandatory, os.O_RDWR|os.O_CREATE, os.ModePerm)
+	if err != nil {
+		panic(err)
+	}
+	defer mandatoryFile.Close()
+
+	_mandatory := []*model.Mandatory{}
+	if err := gocsv.UnmarshalFile(mandatoryFile, &_mandatory); err != nil {
+		panic(err)
+	}
+
 	busy := []*model.Busy{}
 	reserved := []*model.Reserved{}
 	courses := []*model.Course{}
@@ -86,6 +97,12 @@ func LoadCourses(pathToCourses string, pathToReserved string, pathToBusy string,
 					c.Reserved = true
 					assignReservedCourseProperties(c, reservedCourse)
 					reserved = append(reserved, reservedCourse)
+					break
+				}
+			}
+			for _, compulsoryCourse := range _mandatory {
+				if c.Course_Code == compulsoryCourse.Course_Code {
+					c.Compulsory = true
 					break
 				}
 			}

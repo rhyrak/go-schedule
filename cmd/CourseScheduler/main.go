@@ -16,6 +16,7 @@ const (
 	CoursesFile      = "./res/private/courses2.csv"
 	PriorityFile     = "./res/private/reserved.csv"
 	BlacklistFile    = "./res/private/busy.csv"
+	MandatoryFile    = "./res/private/mandatory.csv"
 	ExportFile       = "schedule.csv"
 	NumberOfDays     = 5
 	TimeSlotDuration = 60
@@ -28,7 +29,7 @@ func main() {
 	ignoredCourses := []string{"ENGR450", "IE101", "CENG404"}
 	// Parse and instantiate course objects from CSV (ignored courses are not loaded)
 	// Also assign additional attributes and find conflicting courses
-	courses, reserved, busy := csvio.LoadCourses(CoursesFile, PriorityFile, BlacklistFile, ';', ignoredCourses)
+	courses, reserved, busy := csvio.LoadCourses(CoursesFile, PriorityFile, BlacklistFile, MandatoryFile, ';', ignoredCourses)
 
 	fmt.Println("Professors with their busy schedules are as below:")
 	for _, b := range busy {
