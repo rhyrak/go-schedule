@@ -1,5 +1,7 @@
 package model
 
+import "math/rand"
+
 type TimeSlot struct {
 	Courses    []CourseID
 	CourseRefs []*Course
@@ -8,6 +10,7 @@ type TimeSlot struct {
 type Day struct {
 	Slots        []*TimeSlot
 	GradeCounter map[string][]int // GradeCounter["Department"][Grade] = PlacedCount
+	DayOfWeek    int
 }
 
 type Schedule struct {
@@ -34,12 +37,16 @@ func NewSchedule(days int, timeSlotDuration int, timeSlotCount int) *Schedule {
 	schedule := Schedule{Days: make([]*Day, days), TimeSlotDuration: timeSlotDuration, TimeSlotCount: timeSlotCount}
 	for i := range schedule.Days {
 		schedule.Days[i] = new(Day)
+		schedule.Days[i].DayOfWeek = i
 		schedule.Days[i].Slots = make([]*TimeSlot, timeSlotCount)
 		for j := 0; j < timeSlotCount; j++ {
 			schedule.Days[i].Slots[j] = new(TimeSlot)
 		}
 		schedule.Days[i].GradeCounter = make(map[string][]int)
 	}
+	rand.Shuffle(len(schedule.Days), func(i, j int) {
+		schedule.Days[i], schedule.Days[j] = schedule.Days[j], schedule.Days[i]
+	})
 	return &schedule
 }
 

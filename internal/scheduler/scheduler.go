@@ -22,17 +22,17 @@ func FillCourses(courses []*model.Course, schedule *model.Schedule, rooms []*mod
 		course.NeededSlots = int(math.Ceil(float64(course.Duration) / float64(schedule.TimeSlotDuration)))
 		ignoreDailyLimit := shouldIgnoreDailyLimit(schedule.Days, course.DepartmentCode, course.Class)
 
-		for dayIndex, day := range schedule.Days {
+		for _, day := range schedule.Days {
 			if !ignoreDailyLimit && day.GradeCounter[course.DepartmentCode][course.Class] >= 2 {
 				continue
 			}
-			if !slices.Contains(course.BusyDays, dayIndex) {
+			if !slices.Contains(course.BusyDays, day.DayOfWeek) {
 				var placed bool
 				if day.GradeCounter[course.DepartmentCode][course.Class] > 0 {
-					placed = tryPlaceIntoDay(course, schedule, dayIndex, day, rooms, schedule.TimeSlotCount/2+1)
+					placed = tryPlaceIntoDay(course, schedule, day.DayOfWeek, day, rooms, schedule.TimeSlotCount/2+1)
 				}
 				if !placed {
-					placed = tryPlaceIntoDay(course, schedule, dayIndex, day, rooms, 1)
+					placed = tryPlaceIntoDay(course, schedule, day.DayOfWeek, day, rooms, 1)
 				}
 				if placed {
 					placedCount++
@@ -57,7 +57,14 @@ func PlaceReservedCourses(courses []*model.Reserved, schedule *model.Schedule, r
 		//fmt.Println(course.CourseRef.NeededSlots)
 		shouldIgnoreDailyLimit(schedule.Days, course.CourseRef.DepartmentCode, course.CourseRef.Class)
 
-		placed := tryPlaceIntoDay(course.CourseRef, schedule, course.CourseRef.ReservedDay, schedule.Days[course.CourseRef.ReservedDay], rooms, course.CourseRef.ReservedStartingTimeSlot)
+		var day *model.Day
+		for _, d := range schedule.Days {
+			if d.DayOfWeek == course.CourseRef.ReservedDay {
+				day = d
+			}
+		}
+
+		placed := tryPlaceIntoDay(course.CourseRef, schedule, day.DayOfWeek, day, rooms, course.CourseRef.ReservedStartingTimeSlot)
 		if placed {
 			placedCount++
 		}

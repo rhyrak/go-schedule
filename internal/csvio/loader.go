@@ -152,6 +152,16 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy) {
 			}
 		}
 	}
+
+	for _, c := range courses {
+		if len(c.BusyDays) > 0 {
+			fmt.Printf("%s %s %s %s\n", c.Course_Code, c.Course_Name, c.DepartmentCode, c.Lecturer)
+			for _, v := range c.BusyDays {
+				fmt.Printf("%d ", v)
+			}
+			fmt.Printf("\n")
+		}
+	}
 }
 
 // Collect and store conflicting courses of given course

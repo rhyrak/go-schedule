@@ -67,7 +67,7 @@ func PrintSchedule(schedule *model.Schedule) {
 func formatAndFilterSchedule(schedule *model.Schedule) []*model.ScheduleCSVRow {
 	var formatted []*model.ScheduleCSVRow
 	var seen map[model.CourseID]bool = make(map[model.CourseID]bool)
-	for dayIndex, day := range schedule.Days {
+	for _, day := range schedule.Days {
 		for slotOffset, s := range day.Slots {
 			for _, c := range s.CourseRefs {
 				if _, ok := seen[c.CourseID]; !ok {
@@ -81,7 +81,7 @@ func formatAndFilterSchedule(schedule *model.Schedule) []*model.ScheduleCSVRow {
 				}
 				formatted = append(formatted, &model.ScheduleCSVRow{
 					CourseCode: c.Course_Code,
-					Day:        dayIndex,
+					Day:        day.DayOfWeek,
 					Duration:   c.Duration,
 					Time:       slotOffset * schedule.TimeSlotDuration,
 					Classrooms: classroom,
