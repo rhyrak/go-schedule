@@ -32,7 +32,7 @@ func FillCourses(courses []*model.Course, schedule *model.Schedule, rooms []*mod
 					placed = tryPlaceIntoDay(course, schedule, day.DayOfWeek, day, rooms, schedule.TimeSlotCount/2+1)
 				}
 				if !placed {
-					placed = tryPlaceIntoDay(course, schedule, day.DayOfWeek, day, rooms, 1)
+					placed = tryPlaceIntoDay(course, schedule, day.DayOfWeek, day, rooms, 0)
 				}
 				if placed {
 					placedCount++
