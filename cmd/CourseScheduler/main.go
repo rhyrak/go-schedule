@@ -49,7 +49,7 @@ func main() {
 	var schedule *model.Schedule
 	var iter int32
 	// Try to create a valid schedule upto 2000 times
-	for iter = 1; iter <= 10000; iter++ {
+	for iter = 1; iter <= 1; iter++ {
 		for _, c := range classrooms {
 			// Initialize an empty classroom-oriented schedule to keep track of classroom utilization throughout the week
 			c.CreateSchedule(NumberOfDays, TimeSlotCount)

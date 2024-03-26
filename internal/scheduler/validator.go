@@ -18,7 +18,7 @@ func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.
 	unassignedCount := 0
 	var unassignedCourses []*model.Course
 	for _, c := range courses {
-		if c.NeedsRoom && !c.Placed {
+		if !c.Placed {
 			unassignedCount++
 			unassignedCourses = append(unassignedCourses, c)
 		}
