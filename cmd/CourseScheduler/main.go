@@ -12,16 +12,15 @@ import (
 
 // Program parameters
 const (
-	ClassroomsFile      = "./res/private/classrooms.csv"
-	CoursesFile         = "./res/private/courses2.csv"
-	PriorityFile        = "./res/private/reserved.csv"
-	BlacklistFile       = "./res/private/busy.csv"
-	MandatoryFile       = "./res/private/mandatory.csv"
-	ExportFile          = "schedule"
-	ExportFileExtension = ".csv"
-	NumberOfDays        = 5
-	TimeSlotDuration    = 60
-	TimeSlotCount       = 9
+	ClassroomsFile   = "./res/private/classrooms.csv"
+	CoursesFile      = "./res/private/courses2.csv"
+	PriorityFile     = "./res/private/reserved.csv"
+	BlacklistFile    = "./res/private/busy.csv"
+	MandatoryFile    = "./res/private/mandatory.csv"
+	ExportFile       = "schedule.csv"
+	NumberOfDays     = 5
+	TimeSlotDuration = 60
+	TimeSlotCount    = 9
 )
 
 func main() {
@@ -73,9 +72,7 @@ func main() {
 	}
 	end := time.Now().UnixNano()
 
-	// Write newly created schedule to disk
-	outPath := csvio.ExportSchedule(schedule, ExportFile, ExportFileExtension)
-	// Validate and print error messages
+	csvio.ExportSchedule(schedule, ExportFile)
 	valid, msg := scheduler.Validate(courses, schedule, classrooms)
 	if !valid {
 		fmt.Println("Invalid schedule:")
@@ -83,10 +80,8 @@ func main() {
 		fmt.Println("Passed all tests")
 	}
 	fmt.Println(msg)
-	// Show how evil the schedule is
 	schedule.CalculateCost()
 	fmt.Printf("Cost: %d\n", schedule.Cost)
 	fmt.Printf("Iteration: %d\n", iter)
 	fmt.Printf("Timer: %f ms\n", float64(end-start)/1000000.0)
-	fmt.Println("Exported output to: " + outPath)
 }
