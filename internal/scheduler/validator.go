@@ -18,7 +18,7 @@ func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.
 	unassignedCount := 0
 	var unassignedCourses []*model.Course
 	for _, c := range courses {
-		if !c.Placed {
+		if c.NeedsRoom && !c.Placed {
 			unassignedCount++
 			unassignedCourses = append(unassignedCourses, c)
 		}
@@ -69,7 +69,7 @@ func checkCourseCollision(schedule *model.Schedule) (bool, string) {
 		for _, slot := range day.Slots {
 			for _, c1 := range slot.CourseRefs {
 				for _, c2 := range slot.Courses {
-					if contains(c1.ConflictingCourses, c2) {
+					if contains(c1.ConflictingCourses, c2) && !c1.ServiceCourse {
 						valid = false
 						message += "Conflicting courses placed at the same time\n"
 					}

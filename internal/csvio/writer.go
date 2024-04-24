@@ -31,6 +31,15 @@ func ExportSchedule(schedule *model.Schedule, path string, extension string) str
 		panic(err)
 	}
 
+	// Set Semi-Colon as delimiter
+	/*
+		gocsv.SetCSVWriter(func(out io.Writer) *gocsv.SafeCSVWriter {
+			writer := csv.NewWriter(out)
+			writer.Comma = ';'
+			return gocsv.NewSafeCSVWriter(writer)
+		})
+	*/
+
 	// Write to file
 	err = gocsv.MarshalFile(&nice, out)
 	defer out.Close()
@@ -87,7 +96,7 @@ func formatAndFilterSchedule(schedule *model.Schedule) []*model.ScheduleCSVRow {
 					classroom = c.Classroom.ID
 				}
 				formatted = append(formatted, &model.ScheduleCSVRow{
-					CourseCode: c.Course_Code,
+					CourseCode: c.DisplayName,
 					Day:        day.DayOfWeek,
 					Duration:   c.Duration,
 					Time:       slotOffset * schedule.TimeSlotDuration,

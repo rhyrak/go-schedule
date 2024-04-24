@@ -26,4 +26,7 @@ type Course struct {
 	ReservedDay              int        `csv:"-"`
 	BusyDays                 []int      `csv:"-"`
 	Compulsory               bool       `csv:"-"`
+	ConflictProbability      float64    `csv:"_"`
+	DisplayName              string     `csv:"_"`
+	ServiceCourse            bool       `csv:"_"`
 }
