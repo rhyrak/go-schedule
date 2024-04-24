@@ -114,6 +114,7 @@ func LoadCourses(pathToCourses string, pathToReserved string, pathToBusy string,
 			}
 		}
 		if !ignore {
+			c.Course_Name = strings.ReplaceAll(c.Course_Name, ",", "_")
 			for _, reservedCourse := range _reserved {
 				if c.Course_Code == reservedCourse.CourseCodeSTR {
 					c.Reserved = true
