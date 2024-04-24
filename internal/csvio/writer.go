@@ -82,7 +82,7 @@ func formatAndFilterSchedule(schedule *model.Schedule) []*model.ScheduleCSVRow {
 					classroom = c.Classroom.ID
 				}
 				formatted = append(formatted, &model.ScheduleCSVRow{
-					CourseCode: c.Course_Code,
+					CourseCode: c.DisplayName,
 					Day:        day.DayOfWeek,
 					Duration:   c.Duration,
 					Time:       slotOffset * schedule.TimeSlotDuration,
