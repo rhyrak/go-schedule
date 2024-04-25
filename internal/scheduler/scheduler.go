@@ -12,7 +12,7 @@ import (
 // FillCourses tries to assign a time and room for all unassigned courses.
 // Returns the number of newly assigned courses.
 // TODO: insert labs after theory
-func FillCourses(courses []*model.Course, schedule *model.Schedule, rooms []*model.Classroom, state int) int {
+func FillCourses(courses []*model.Course, labs []*model.Laboratory, schedule *model.Schedule, rooms []*model.Classroom, state int, placementProbability float64) int {
 	sort.Slice(rooms, func(i, j int) bool {
 		return rooms[i].Capacity < rooms[j].Capacity
 	})
@@ -43,6 +43,9 @@ func FillCourses(courses []*model.Course, schedule *model.Schedule, rooms []*mod
 		ignoreDailyLimit := shouldIgnoreDailyLimit(schedule.Days, course.DepartmentCode, course.Class)
 
 		for _, day := range schedule.Days {
+			if course.Compulsory && day.DayOfWeek == 2 && course.ConflictProbability > placementProbability {
+				continue
+			}
 			if !ignoreDailyLimit && day.GradeCounter[course.DepartmentCode][course.Class] >= 2 {
 				continue
 			}
@@ -56,6 +59,109 @@ func FillCourses(courses []*model.Course, schedule *model.Schedule, rooms []*mod
 				}
 				if placed {
 					placedCount++
+					course.PlacedDay = day.DayOfWeek
+					break
+				}
+			}
+		}
+	}
+	return placedCount + PlaceLaboratories(labs, schedule, rooms, state, placementProbability)
+}
+
+func PlaceLaboratories(labs []*model.Laboratory, schedule *model.Schedule, rooms []*model.Classroom, state int, placementProbability float64) int {
+	sort.Slice(rooms, func(i, j int) bool {
+		return rooms[i].Capacity < rooms[j].Capacity
+	})
+	var startSlot int
+	switch state {
+	case 1:
+		fallthrough
+	case 3:
+		fallthrough
+	case 5:
+		startSlot = 0
+	case 0:
+		fallthrough
+	case 2:
+		fallthrough
+	case 4:
+		startSlot = 1
+	default:
+		panic("Invalid State: " + strconv.Itoa(state))
+	}
+
+	placedCount := 0
+	for _, lab := range labs {
+		if lab.Placed {
+			continue
+		}
+		dummyCourse := model.Course{
+			Section:                  lab.Section,
+			Course_Code:              lab.Course_Code,
+			Course_Name:              lab.Course_Name,
+			Number_of_Students:       lab.Number_of_Students,
+			Course_Environment:       "lab",
+			TplusU:                   lab.TplusU,
+			AKTS:                     lab.AKTS,
+			Class:                    lab.Class,
+			Depertmant:               lab.Depertmant,
+			Lecturer:                 lab.Lecturer,
+			DepartmentCode:           lab.DepartmentCode,
+			Duration:                 lab.Duration,
+			CourseID:                 lab.CourseID,
+			ConflictingCourses:       lab.ConflictingCourses,
+			Placed:                   false,
+			Classroom:                nil,
+			NeedsRoom:                lab.NeedsRoom,
+			NeededSlots:              lab.NeededSlots,
+			Reserved:                 false,
+			ReservedStartingTimeSlot: 0,
+			ReservedDay:              0,
+			BusyDays:                 lab.BusyDays,
+			Compulsory:               lab.Compulsory,
+			ConflictProbability:      0.0,
+			DisplayName:              lab.DisplayName,
+			ServiceCourse:            false,
+			HasBeenSplit:             false,
+			IsFirstHalf:              false,
+			HasLab:                   false,
+			PlacedDay:                -1,
+		}
+
+		dummyCourse.NeededSlots = int(math.Ceil(float64(dummyCourse.Duration) / float64(schedule.TimeSlotDuration)))
+		ignoreDailyLimit := shouldIgnoreDailyLimit(schedule.Days, dummyCourse.DepartmentCode, dummyCourse.Class)
+		var day1, day2 int
+		if lab.TheoreticalCourseRef[0].HasBeenSplit {
+			day1 = lab.TheoreticalCourseRef[0].PlacedDay
+			day2 = lab.TheoreticalCourseRef[1].PlacedDay
+		} else {
+			day1 = lab.TheoreticalCourseRef[0].PlacedDay
+			day2 = day1
+		}
+
+		for _, day := range schedule.Days {
+			// Skip day(s) of theoretical course
+			if day.DayOfWeek == day1 || day.DayOfWeek == day2 {
+				continue
+			}
+			if day.DayOfWeek == 2 && lab.ConflictProbability > placementProbability {
+				continue
+			}
+			if !ignoreDailyLimit && day.GradeCounter[dummyCourse.DepartmentCode][dummyCourse.Class] >= 2 {
+				continue
+			}
+			if !slices.Contains(dummyCourse.BusyDays, day.DayOfWeek) {
+				var placed bool
+				if day.GradeCounter[dummyCourse.DepartmentCode][dummyCourse.Class] > 0 {
+					placed = tryPlaceIntoDay(&dummyCourse, schedule, day.DayOfWeek, day, rooms, schedule.TimeSlotCount/2+1, false)
+				}
+				if !placed {
+					placed = tryPlaceIntoDay(&dummyCourse, schedule, day.DayOfWeek, day, rooms, startSlot, false)
+				}
+				if placed {
+					placedCount++
+					lab.Placed = true
+					lab.Classroom = dummyCourse.Classroom
 					break
 				}
 			}

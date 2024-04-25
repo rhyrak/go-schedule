@@ -29,7 +29,7 @@ func substr(input string, start int, length int) string {
 }
 
 // LoadCourses reads and parses given csv file for course data.
-func LoadCourses(pathToCourses string, pathToReserved string, pathToBusy string, pathToMandatory string, pathToConflicts string, pathToSplit string, delim rune, ignored []string, service []string) ([]*model.Course, []*model.Reserved, []*model.Busy, []*model.Conflict) {
+func LoadCourses(pathToCourses string, pathToReserved string, pathToBusy string, pathToMandatory string, pathToConflicts string, pathToSplit string, delim rune, ignored []string, service []string) ([]*model.Course, []*model.Laboratory, []*model.Reserved, []*model.Busy, []*model.Conflict) {
 	gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
 		r := csv.NewReader(in)
 		r.Comma = delim
@@ -140,9 +140,9 @@ func LoadCourses(pathToCourses string, pathToReserved string, pathToBusy string,
 	}
 
 	busy = mergeBusyDays(busy, _busy)
-	courses = assignCourseProperties(courses, busy, _splits)
+	courses, labs := assignCourseProperties(courses, busy, _splits)
 
-	return courses, reserved, busy, _conflicts
+	return courses, labs, reserved, busy, _conflicts
 }
 
 // LoadClassrooms reads and parses given csv file for classroom data.
@@ -168,13 +168,12 @@ func LoadClassrooms(path string, delim rune) []*model.Classroom {
 	return classrooms
 }
 
-// Determine duration and course environment and busy days
-func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits []*model.Split) []*model.Course {
+func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits []*model.Split) ([]*model.Course, []*model.Laboratory) {
 	additionalCourses := []*model.Course{}
+	additionalLabs := []*model.Laboratory{}
 	var id model.CourseID = 1
 	for _, course := range courses {
 		course.CourseID = id
-		id++
 		course.DisplayName = course.Course_Code
 		split := strings.Split(course.TplusU, "+")
 		T, err := strconv.Atoi(split[0])
@@ -187,8 +186,11 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits 
 			fmt.Println(course)
 			panic(err)
 		}
+		hasLab := U != 0
 		var shouldSplit bool = false
 		var firstHalf int = 0
+		var newCourse1 model.Course
+		var newCourse2 model.Course
 		for _, _s := range splits {
 			if _s.Course_Code == course.Course_Code && (_s.Half_Duration > T || _s.Half_Duration <= 0) {
 				fmt.Print(_s)
@@ -203,7 +205,7 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits 
 
 		if shouldSplit {
 			secondHalf := T - firstHalf
-			newCourse1 := model.Course{
+			newCourse1 = model.Course{
 				Section:                  course.Section,
 				Course_Code:              course.Course_Code,
 				Course_Name:              course.Course_Name,
@@ -229,6 +231,11 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits 
 				Compulsory:               course.Compulsory,
 				ConflictProbability:      0.0,
 				DisplayName:              course.Course_Code,
+				ServiceCourse:            false,
+				HasBeenSplit:             true,
+				IsFirstHalf:              true,
+				HasLab:                   hasLab,
+				PlacedDay:                -1,
 			}
 			for _, busyDay := range busy {
 				if busyDay.Lecturer == newCourse1.Lecturer {
@@ -239,7 +246,7 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits 
 			additionalCourses = append(additionalCourses, &newCourse1)
 			id++
 
-			newCourse2 := model.Course{
+			newCourse2 = model.Course{
 				Section:                  course.Section,
 				Course_Code:              course.Course_Code,
 				Course_Name:              course.Course_Name,
@@ -265,6 +272,11 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits 
 				Compulsory:               course.Compulsory,
 				ConflictProbability:      0.0,
 				DisplayName:              course.Course_Code,
+				ServiceCourse:            false,
+				HasBeenSplit:             true,
+				IsFirstHalf:              false,
+				HasLab:                   hasLab,
+				PlacedDay:                -1,
 			}
 			for _, busyDay := range busy {
 				if busyDay.Lecturer == newCourse2.Lecturer {
@@ -281,13 +293,14 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits 
 		if T == 0 || (course.Course_Environment == "lab" && U != 0) {
 			course.Duration = 60 * U
 		} else if course.Course_Environment == "classroom" && U != 0 {
+			id++
 			var suffix string
 			if course.DepartmentCode == "MATH" {
 				suffix = " - P"
 			} else {
 				suffix = ""
 			}
-			newLab := model.Course{
+			newLab := model.Laboratory{
 				Section:                  course.Section,
 				Course_Code:              course.Course_Code,
 				Course_Name:              course.Course_Name,
@@ -313,6 +326,7 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits 
 				Compulsory:               course.Compulsory,
 				ConflictProbability:      0.0,
 				DisplayName:              course.Course_Code + suffix,
+				TheoreticalCourseRef:     []*model.Course{},
 			}
 			if course.DepartmentCode == "MATH" {
 				for _, busyDay := range busy {
@@ -323,11 +337,21 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits 
 				}
 			}
 
-			additionalCourses = append(additionalCourses, &newLab)
+			if shouldSplit {
+				newLab.TheoreticalCourseRef = append(newLab.TheoreticalCourseRef, &newCourse1)
+				newLab.TheoreticalCourseRef = append(newLab.TheoreticalCourseRef, &newCourse2)
+			} else {
+				newLab.TheoreticalCourseRef = append(newLab.TheoreticalCourseRef, course)
+			}
+
+			additionalLabs = append(additionalLabs, &newLab)
 			id++
 		}
 
 		if !shouldSplit {
+			id++
+			course.HasLab = hasLab
+			course.PlacedDay = -1
 			additionalCourses = append(additionalCourses, course)
 			course.NeedsRoom = course.Course_Environment == "classroom"
 			for _, busyDay := range busy {
@@ -348,7 +372,7 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits 
 			fmt.Printf("\n")
 		}
 	}
-	return additionalCourses
+	return additionalCourses, additionalLabs
 }
 
 func assignReservedCourseProperties(course *model.Course, reserved *model.Reserved, service []string) {
