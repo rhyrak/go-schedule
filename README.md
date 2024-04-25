@@ -56,3 +56,14 @@ course_code,day,time,duration,classrooms,class,department,course_name
 * 6000-7999:      starts at 8:30 && neighbouring compulsory courses conflict probabilistically                    (State:3)
 * 8000-9999:      starts at 9:30 && neighbouring compulsory courses conflict                                      (State:4)
 * 10000-11999:    starts at 8:30 && neighbouring compulsory courses conflict                          (State:5) (Worst case)
+
+### Error Codes
+* Err00 - Failed to open file - File not found
+* Err01 - Failed to read from file
+* Err02 - Failed to open file - File not found - Could not create file
+* Err03 - Failed to write to file
+* Err04 - Invalid input String formatting error in Reserved data
+* Err05 - Invalid input data error in Reserved data
+* Err06 - Err04 or Err05 or both
+* Err07 - Invalid input String formatting error in T+U Course data
+* Err08 - Invalid iteration state - Malleable Constraints

@@ -36,69 +36,81 @@ func LoadCourses(pathToCourses string, pathToReserved string, pathToBusy string,
 		return r
 	})
 
-	coursesFile, err := os.OpenFile(pathToCourses, os.O_RDWR|os.O_CREATE, os.ModePerm)
+	coursesFile, err := os.OpenFile(pathToCourses, os.O_RDWR, os.ModePerm)
 	if err != nil {
+		fmt.Println("Err00")
 		panic(err)
 	}
 	defer coursesFile.Close()
 
 	_courses := []*model.Course{}
 	if err := gocsv.UnmarshalFile(coursesFile, &_courses); err != nil {
+		fmt.Println("Err01")
 		panic(err)
 	}
 
-	priorityFile, err := os.OpenFile(pathToReserved, os.O_RDWR|os.O_CREATE, os.ModePerm)
+	priorityFile, err := os.OpenFile(pathToReserved, os.O_RDWR, os.ModePerm)
 	if err != nil {
+		fmt.Println("Err00")
 		panic(err)
 	}
 	defer priorityFile.Close()
 
 	_reserved := []*model.Reserved{}
 	if err := gocsv.UnmarshalFile(priorityFile, &_reserved); err != nil {
+		fmt.Println("Err01")
 		panic(err)
 	}
 
-	busyFile, err := os.OpenFile(pathToBusy, os.O_RDWR|os.O_CREATE, os.ModePerm)
+	busyFile, err := os.OpenFile(pathToBusy, os.O_RDWR, os.ModePerm)
 	if err != nil {
+		fmt.Println("Err00")
 		panic(err)
 	}
 	defer busyFile.Close()
 
 	_busy := []*model.BusyCSV{}
 	if err := gocsv.UnmarshalFile(busyFile, &_busy); err != nil {
+		fmt.Println("Err01")
 		panic(err)
 	}
 
-	mandatoryFile, err := os.OpenFile(pathToMandatory, os.O_RDWR|os.O_CREATE, os.ModePerm)
+	mandatoryFile, err := os.OpenFile(pathToMandatory, os.O_RDWR, os.ModePerm)
 	if err != nil {
+		fmt.Println("Err00")
 		panic(err)
 	}
 	defer mandatoryFile.Close()
 
 	_mandatory := []*model.Mandatory{}
 	if err := gocsv.UnmarshalFile(mandatoryFile, &_mandatory); err != nil {
+		fmt.Println("Err01")
 		panic(err)
 	}
 
-	conflictFile, err := os.OpenFile(pathToConflicts, os.O_RDWR|os.O_CREATE, os.ModePerm)
+	conflictFile, err := os.OpenFile(pathToConflicts, os.O_RDWR, os.ModePerm)
 	if err != nil {
+		fmt.Println("Err00")
 		panic(err)
 	}
 	defer conflictFile.Close()
 
 	_conflicts := []*model.Conflict{}
 	if err := gocsv.UnmarshalFile(conflictFile, &_conflicts); err != nil {
+		fmt.Println("Err01")
 		panic(err)
 	}
 
-	splitFile, err := os.OpenFile(pathToSplit, os.O_RDWR|os.O_CREATE, os.ModePerm)
+	splitFile, err := os.OpenFile(pathToSplit, os.O_RDWR, os.ModePerm)
 	if err != nil {
+		fmt.Println("Err00")
 		panic(err)
 	}
 	defer splitFile.Close()
 
 	_splits := []*model.Split{}
 	if err := gocsv.UnmarshalFile(splitFile, &_splits); err != nil {
+		fmt.Println("Err01")
 		panic(err)
 	}
 
@@ -153,7 +165,7 @@ func LoadClassrooms(path string, delim rune) []*model.Classroom {
 		return r
 	})
 
-	classroomsFile, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, os.ModePerm)
+	classroomsFile, err := os.OpenFile(path, os.O_RDWR, os.ModePerm)
 	if err != nil {
 		panic(err)
 	}
@@ -178,11 +190,13 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits 
 		split := strings.Split(course.TplusU, "+")
 		T, err := strconv.Atoi(split[0])
 		if err != nil {
+			fmt.Println("Err07")
 			fmt.Println(course)
 			panic(err)
 		}
 		U, err := strconv.Atoi(split[1])
 		if err != nil {
+			fmt.Println("Err07")
 			fmt.Println(course)
 			panic(err)
 		}
@@ -363,36 +377,42 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits 
 		}
 	}
 
-	for _, c := range courses {
-		if len(c.BusyDays) > 0 {
-			fmt.Printf("%s %s %s %s\n", c.Course_Code, c.Course_Name, c.DepartmentCode, c.Lecturer)
-			for _, v := range c.BusyDays {
-				fmt.Printf("%d ", v)
+	/*
+		for _, c := range courses {
+			if len(c.BusyDays) > 0 {
+				fmt.Printf("%s %s %s %s\n", c.Course_Code, c.Course_Name, c.DepartmentCode, c.Lecturer)
+				for _, v := range c.BusyDays {
+					fmt.Printf("%d ", v)
+				}
+				fmt.Printf("\n")
 			}
-			fmt.Printf("\n")
 		}
-	}
+	*/
 	return additionalCourses, additionalLabs
 }
 
 func assignReservedCourseProperties(course *model.Course, reserved *model.Reserved, service []string) {
 	startHH, err0 := strconv.Atoi(substr(reserved.StartingTimeSTR, 0, 2))
 	if err0 != nil {
+		fmt.Println("Err04")
 		fmt.Printf("Formatting error %d at %s inside reserved.csv, Starting_Time should be formatted as HH:MM\n", startHH, course.Course_Code)
 		panic(err0)
 	}
 	if startHH > 16 || startHH < 8 {
-		fmt.Printf("Formatting error %d at %s inside reserved.csv, Should be restricted between 08:xx and 16:xx\n", startHH, course.Course_Code)
+		fmt.Println("Err05")
+		fmt.Printf("Data error %d at %s inside reserved.csv, Should be restricted between 08:xx and 16:xx\n", startHH, course.Course_Code)
 		os.Exit(1)
 	}
 
 	startMM, err1 := strconv.Atoi(substr(reserved.StartingTimeSTR, 3, 2))
 	if err1 != nil {
+		fmt.Println("Err05")
 		fmt.Printf("Formatting error %d at %s inside reserved.csv, Starting_Time should be formatted as HH:MM\n", startMM, course.Course_Code)
 		panic(err1)
 	}
 	if startMM > 59 || startMM < 0 {
-		fmt.Printf("Formatting error %d at %s inside reserved.csv, Should be restricted between xx:00 and xx:59\n", startMM, course.Course_Code)
+		fmt.Println("Err05")
+		fmt.Printf("Data error %d at %s inside reserved.csv, Should be restricted between xx:00 and xx:59\n", startMM, course.Course_Code)
 		os.Exit(1)
 	}
 
@@ -413,7 +433,8 @@ func assignReservedCourseProperties(course *model.Course, reserved *model.Reserv
 	case "Friday":
 		DesiredDay = 4
 	default:
-		fmt.Printf("Formatting error %s at %s inside reserved.csv, Day should be restricted between Monday and Friday using PascalCase\n", reserved.DaySTR, course.Course_Code)
+		fmt.Println("Err06")
+		fmt.Printf("Data error %s at %s inside reserved.csv, Day should be restricted between Monday and Friday using PascalCase\n", reserved.DaySTR, course.Course_Code)
 		os.Exit(1)
 	}
 

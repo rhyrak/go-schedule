@@ -45,11 +45,11 @@ func main() {
 		fmt.Println(b.Day)
 	}
 
-	fmt.Println("")
+	fmt.Println()
 
 	fmt.Println("Courses reserved to certain days and hours are as below:")
 	for _, c := range reserved {
-		fmt.Println(c.CourseCodeSTR + " " + c.DaySTR + " " + c.StartingTimeSTR)
+		fmt.Println(c.CourseRef.DepartmentCode + " " + c.CourseCodeSTR + " " + c.DaySTR + " " + c.StartingTimeSTR)
 	}
 
 	start := time.Now().UnixNano()

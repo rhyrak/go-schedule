@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"fmt"
 	"math"
 	"slices"
 	"sort"
@@ -31,6 +32,7 @@ func FillCourses(courses []*model.Course, labs []*model.Laboratory, schedule *mo
 	case 4:
 		startSlot = 1
 	default:
+		fmt.Println("Err08")
 		panic("Invalid State: " + strconv.Itoa(state))
 	}
 
@@ -87,6 +89,7 @@ func PlaceLaboratories(labs []*model.Laboratory, schedule *model.Schedule, rooms
 	case 4:
 		startSlot = 1
 	default:
+		fmt.Println("Err08")
 		panic("Invalid State: " + strconv.Itoa(state))
 	}
 
