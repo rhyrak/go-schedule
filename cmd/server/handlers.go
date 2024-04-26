@@ -64,7 +64,7 @@ func handlePostSchedule(ctx *gin.Context) {
 	busyFile := form.File["busy"][0]
 	conflictsFile := form.File["conflicts"][0]
 	splitFile := form.File["splits"][0]
-	if coursesFile == nil || classroomsFile == nil || priorityFile == nil || busyFile == nil {
+	if coursesFile == nil || classroomsFile == nil || priorityFile == nil || busyFile == nil || conflictsFile == nil || splitFile == nil {
 		ctx.Status(http.StatusBadRequest)
 		return
 	}
@@ -79,6 +79,8 @@ func handlePostSchedule(ctx *gin.Context) {
 	ctx.SaveUploadedFile(classroomsFile, ClassroomsPath)
 	ctx.SaveUploadedFile(priorityFile, PriorityPath)
 	ctx.SaveUploadedFile(busyFile, BusyPath)
+	ctx.SaveUploadedFile(conflictsFile, ConflictsPath)
+	ctx.SaveUploadedFile(splitFile, SplitPath)
 	ExportFile := "db/generated/" + timestamp + "-schedule.csv"
 
 	go createAndExportSchedule(ClassroomsPath, CoursesPath, PriorityPath, BusyPath, MandatoryFile, ExportFile, ConflictsPath, SplitPath)

@@ -23,6 +23,7 @@ func ExportSchedule(schedule *model.Schedule, path string) error {
 	// Open new file
 	out, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.ModePerm)
 	if err != nil {
+		fmt.Println("Err02")
 		panic(err)
 	}
 
@@ -30,6 +31,7 @@ func ExportSchedule(schedule *model.Schedule, path string) error {
 	err = gocsv.MarshalFile(&nice, out)
 	defer out.Close()
 	if err != nil {
+		fmt.Println("Err03")
 		panic(err)
 	}
 
