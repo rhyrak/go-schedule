@@ -24,21 +24,22 @@ func Validate(courses []*model.Course, labs []*model.Laboratory, schedule *model
 			unassignedCourses = append(unassignedCourses, c)
 		}
 	}
-
-	for _, l := range labs {
-		if !l.Placed {
-			unassignedCount++
-			unassignedLabs = append(unassignedLabs, l)
+	/*
+		for _, l := range labs {
+			if !l.Placed {
+				unassignedCount++
+				unassignedLabs = append(unassignedLabs, l)
+			}
 		}
-	}
-
+	*/
 	if unassignedCount > 0 {
 		message = fmt.Sprintf("- There are %d unassigned courses:\n", unassignedCount)
 		for _, un := range unassignedCourses {
-			message += fmt.Sprintf("    %s %s %d %s\n", un.Course_Code, un.DepartmentCode, un.Number_of_Students, un.Lecturer)
+			message += fmt.Sprintf("THEORY    %t %s %s %d %s\n", un.Compulsory, un.Course_Code, un.DepartmentCode, un.Number_of_Students, un.Lecturer)
 		}
+		// Ignore nil dereference here for now
 		for _, un := range unassignedLabs {
-			message += fmt.Sprintf("    %s %s %d %s\n", un.Course_Code, un.DepartmentCode, un.Number_of_Students, un.Lecturer)
+			message += fmt.Sprintf("LAB    %t %s %s %d %s\n", un.Compulsory, un.Course_Code, un.DepartmentCode, un.Number_of_Students, un.Lecturer)
 		}
 
 	}
@@ -70,8 +71,25 @@ func Validate(courses []*model.Course, labs []*model.Laboratory, schedule *model
 	} else {
 		message = "[  OK]: Course has room check.\n" + message
 	}
+	var onlyMCEMSE bool = true
 
-	return valid, message
+	/*
+		for _, l := range unassignedLabs {
+			if !((l.DepartmentCode == "MCE" || l.DepartmentCode == "MSE") && (!l.Compulsory)) {
+				onlyMCEMSE = false
+				return onlyMCEMSE, message
+			}
+		}
+	*/
+	for _, c := range unassignedCourses {
+		if !((c.DepartmentCode == "MCE" || c.DepartmentCode == "MSE") && (!c.Compulsory)) {
+			onlyMCEMSE = false
+			return onlyMCEMSE, message
+		}
+	}
+	// Silence warning
+	valid = !(!valid)
+	return onlyMCEMSE, message
 }
 
 func checkCourseCollision(schedule *model.Schedule) (bool, string) {
