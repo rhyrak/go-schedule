@@ -167,6 +167,7 @@ func LoadClassrooms(path string, delim rune) []*model.Classroom {
 
 	classroomsFile, err := os.OpenFile(path, os.O_RDWR, os.ModePerm)
 	if err != nil {
+		fmt.Println("Err00")
 		panic(err)
 	}
 	defer classroomsFile.Close()
@@ -174,6 +175,7 @@ func LoadClassrooms(path string, delim rune) []*model.Classroom {
 	classrooms := []*model.Classroom{}
 
 	if err := gocsv.UnmarshalFile(classroomsFile, &classrooms); err != nil {
+		fmt.Println("Err01")
 		panic(err)
 	}
 

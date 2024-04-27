@@ -15,20 +15,19 @@ import (
 
 // Program parameters
 const (
-	ClassroomsFile       = "./res/private/classrooms.csv"
-	CoursesFile          = "./res/private/courses2.csv"
-	PriorityFile         = "./res/private/reserved.csv"
-	BlacklistFile        = "./res/private/busy.csv"
-	MandatoryFile        = "./res/private/mandatory.csv"
-	ConflictsFile        = "./res/private/conflict.csv"
-	SplitFile            = "./res/private/split.csv"
-	ExportFile           = "schedule"
-	ExportFileExtension  = ".csv"
-	NumberOfDays         = 5
-	TimeSlotDuration     = 60
-	TimeSlotCount        = 9
-	ConflictProbability  = 0.2
-	placementProbability = 0.5
+	ClassroomsFile      = "./res/private/classrooms.csv"
+	CoursesFile         = "./res/private/courses1.csv"
+	PriorityFile        = "./res/private/reserved.csv"
+	BlacklistFile       = "./res/private/busy.csv"
+	MandatoryFile       = "./res/private/mandatory.csv"
+	ConflictsFile       = "./res/private/conflict.csv"
+	SplitFile           = "./res/private/split.csv"
+	ExportFile          = "schedule"
+	ExportFileExtension = ".csv"
+	NumberOfDays        = 5
+	TimeSlotDuration    = 60
+	TimeSlotCount       = 9
+	ConflictProbability = 0.2
 )
 
 func main() {
@@ -55,15 +54,23 @@ func main() {
 	start := time.Now().UnixNano()
 	var schedule *model.Schedule
 	var iter int32
-	var iterLimit int32 = 11999
+	var iterLimit int32 = 16999
 	var iterState int32 = 2000
 	var state int = 0
-	// Try to create a valid schedule upto 2000 times
+	var placementProbability = 0.0
+	// Try to create a valid schedule upto iterLimit+1 times
 	for iter = 1; iter <= iterLimit; iter++ {
-		// Increment state every iterState iterations
+		// Increment state every iterState iterations and reset Wednesday
 		if iter%iterState == 0 {
 			state++
+			placementProbability = 0.0
 		}
+		// Keep going in 5th state, Also fully unlock Wednesday
+		if state >= 5 {
+			state = 5
+			placementProbability = 1.0
+		}
+		placementProbability = placementProbability + 0.0005
 		for _, c := range classrooms {
 			// Initialize an empty classroom-oriented schedule to keep track of classroom utilization throughout the week
 			c.CreateSchedule(NumberOfDays, TimeSlotCount)
@@ -117,6 +124,15 @@ func InitRuntimeProperties(courses []*model.Course, labs []*model.Laboratory, st
 		}
 		for _, l := range labs {
 			l.ConflictProbability = randomSecureF64()
+		}
+	} else {
+		for _, c := range courses {
+			if c.Compulsory {
+				c.ConflictProbability = 0.0
+			}
+		}
+		for _, l := range labs {
+			l.ConflictProbability = 0.0
 		}
 	}
 
@@ -172,9 +188,7 @@ func InitRuntimeProperties(courses []*model.Course, labs []*model.Laboratory, st
 			case 4:
 				fallthrough
 			case 5:
-				if (c1.DepartmentCode == c2.DepartmentCode) && (c1.Class-c2.Class == 1 || c1.Class-c2.Class == -1) {
-					conflict = true
-				}
+
 			default:
 				panic("Invalid State: " + strconv.Itoa(state))
 			}

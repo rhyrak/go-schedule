@@ -45,12 +45,26 @@ func FillCourses(courses []*model.Course, labs []*model.Laboratory, schedule *mo
 		ignoreDailyLimit := shouldIgnoreDailyLimit(schedule.Days, course.DepartmentCode, course.Class)
 
 		for _, day := range schedule.Days {
-			if course.Compulsory && day.DayOfWeek == 2 && course.ConflictProbability > placementProbability {
+			if course.DepartmentCode != "MSE" && course.DepartmentCode != "MCE" && course.Compulsory && day.DayOfWeek == 2 && course.ConflictProbability > placementProbability {
 				continue
 			}
-			if !ignoreDailyLimit && day.GradeCounter[course.DepartmentCode][course.Class] >= 2 {
-				continue
+			if course.DepartmentCode != "MSE" && course.DepartmentCode != "MCE" {
+				if !ignoreDailyLimit && day.GradeCounter[course.DepartmentCode][course.Class] >= 2 {
+					continue
+				}
+			} else {
+				if course.Compulsory {
+					if !ignoreDailyLimit && day.GradeCounter[course.DepartmentCode][course.Class] >= 3 {
+						continue
+					}
+				} else {
+					if !ignoreDailyLimit && day.GradeCounter[course.DepartmentCode][course.Class] >= 4 {
+						continue
+					}
+				}
+
 			}
+
 			if !slices.Contains(course.BusyDays, day.DayOfWeek) {
 				var placed bool
 				if day.GradeCounter[course.DepartmentCode][course.Class] > 0 {
@@ -67,7 +81,8 @@ func FillCourses(courses []*model.Course, labs []*model.Laboratory, schedule *mo
 			}
 		}
 	}
-	return placedCount + PlaceLaboratories(labs, schedule, rooms, state, placementProbability)
+	return placedCount + len(labs)
+	//return placedCount + PlaceLaboratories(labs, schedule, rooms, state, placementProbability)
 }
 
 func PlaceLaboratories(labs []*model.Laboratory, schedule *model.Schedule, rooms []*model.Classroom, state int, placementProbability float64) int {
