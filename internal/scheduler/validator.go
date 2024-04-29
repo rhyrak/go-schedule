@@ -8,7 +8,7 @@ import (
 
 // Validate checks schedule for conflicts and unassigned courses.
 // Returns false and a message for invalid schedules.
-func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.Classroom) (bool, string) {
+func Validate(courses []*model.Course, labs []*model.Laboratory, schedule *model.Schedule, rooms []*model.Classroom) (bool, string) {
 	var message string
 	var valid bool = true
 	var allAssigned bool
@@ -17,10 +17,18 @@ func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.
 
 	unassignedCount := 0
 	var unassignedCourses []*model.Course
+	var unassignedLabs []*model.Laboratory
 	for _, c := range courses {
-		if !c.Placed {
+		if c.NeedsRoom && !c.Placed {
 			unassignedCount++
 			unassignedCourses = append(unassignedCourses, c)
+		}
+	}
+
+	for _, l := range labs {
+		if !l.Placed {
+			unassignedCount++
+			unassignedLabs = append(unassignedLabs, l)
 		}
 	}
 
@@ -29,6 +37,10 @@ func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.
 		for _, un := range unassignedCourses {
 			message += fmt.Sprintf("    %s %s %d %s\n", un.Course_Code, un.DepartmentCode, un.Number_of_Students, un.Lecturer)
 		}
+		for _, un := range unassignedLabs {
+			message += fmt.Sprintf("    %s %s %d %s\n", un.Course_Code, un.DepartmentCode, un.Number_of_Students, un.Lecturer)
+		}
+
 	}
 	allAssigned = unassignedCount == 0
 
@@ -69,7 +81,7 @@ func checkCourseCollision(schedule *model.Schedule) (bool, string) {
 		for _, slot := range day.Slots {
 			for _, c1 := range slot.CourseRefs {
 				for _, c2 := range slot.Courses {
-					if contains(c1.ConflictingCourses, c2) {
+					if contains(c1.ConflictingCourses, c2) && !c1.ServiceCourse {
 						valid = false
 						message += "Conflicting courses placed at the same time\n"
 					}

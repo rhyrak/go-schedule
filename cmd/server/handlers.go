@@ -62,7 +62,9 @@ func handlePostSchedule(ctx *gin.Context) {
 	classroomsFile := form.File["classrooms"][0]
 	priorityFile := form.File["reserved"][0]
 	busyFile := form.File["busy"][0]
-	if coursesFile == nil || classroomsFile == nil || priorityFile == nil || busyFile == nil {
+	conflictsFile := form.File["conflicts"][0]
+	splitFile := form.File["splits"][0]
+	if coursesFile == nil || classroomsFile == nil || priorityFile == nil || busyFile == nil || conflictsFile == nil || splitFile == nil {
 		ctx.Status(http.StatusBadRequest)
 		return
 	}
@@ -71,13 +73,17 @@ func handlePostSchedule(ctx *gin.Context) {
 	ClassroomsPath := "db/" + timestamp + classroomsFile.Filename
 	PriorityPath := "db/" + timestamp + priorityFile.Filename
 	BusyPath := "db/" + timestamp + busyFile.Filename
+	ConflictsPath := "db/" + timestamp + conflictsFile.Filename
+	SplitPath := "db/" + timestamp + splitFile.Filename
 	ctx.SaveUploadedFile(coursesFile, CoursesPath)
 	ctx.SaveUploadedFile(classroomsFile, ClassroomsPath)
 	ctx.SaveUploadedFile(priorityFile, PriorityPath)
 	ctx.SaveUploadedFile(busyFile, BusyPath)
+	ctx.SaveUploadedFile(conflictsFile, ConflictsPath)
+	ctx.SaveUploadedFile(splitFile, SplitPath)
 	ExportFile := "db/generated/" + timestamp + "-schedule.csv"
 
-	go createAndExportSchedule(ClassroomsPath, CoursesPath, PriorityPath, BusyPath, MandatoryFile, ExportFile)
+	go createAndExportSchedule(ClassroomsPath, CoursesPath, PriorityPath, BusyPath, MandatoryFile, ExportFile, ConflictsPath, SplitPath)
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"id": timestamp,
