@@ -55,9 +55,10 @@ course_code,day,time,duration,classrooms,class,department,course_name
 * 4000-5999:      starts at 9:30 && neighbouring compulsory courses conflict probabilistically                    (State:2)
 * 6000-7999:      starts at 8:30 && neighbouring compulsory courses conflict probabilistically                    (State:3)
 * 8000-9999:      starts at 9:30 && neighbouring compulsory courses conflict                                      (State:4)
-* 10000-11999:    starts at 8:30 && neighbouring compulsory courses conflict                          (State:5) (Worst case)
+* 10000-17000:    starts at 8:30 && neighbouring compulsory courses conflict                          (State:5) (Worst case)
 
 ### Error Codes
+
 * Err00 - Failed to open file - File not found
 * Err01 - Failed to read from file
 * Err02 - Failed to open file - File not found - Could not create file
@@ -67,3 +68,18 @@ course_code,day,time,duration,classrooms,class,department,course_name
 * Err06 - Err04 or Err05 or both
 * Err07 - Invalid input String formatting error in T+U Course data
 * Err08 - Invalid iteration state - Malleable Constraints
+
+### Special Treatment
+
+#### Make Wednesday Free Again!
+We try to keep Wednesday free of Compulsory courses whenever possible
+
+* State 0-4: Probability of a Compulsory (!MSE && !MCE) landing on Wednesday starts from 0% and stops at 50% by the end of the state, this value resets after each state transition
+* State 5: Probability of a Compulsory (!MSE && !MCE) landing on Wednesday is always 100%, State 5 is the Worst Case and We want to get by any way we can...
+* MSE || MCE: Wednesday is fully unlocked for these two departments regardless of State or the course being Compulsory or not.
+
+#### Daily Course Limit
+We try to limit the number of courses existing in a day to distribute the load across the week
+
+* !MSE && !MCE: 3
+* MSE || MCE: If Compulsory, 4. If Elective, 5.
