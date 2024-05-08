@@ -32,7 +32,7 @@ func ExportSchedule(schedule *model.Schedule, path string, extension string) str
 		panic(err)
 	}
 
-	// Set Semi-Colon as delimiter
+	// Set Semi-Colon as delimiter (unused currently)
 	/*
 		gocsv.SetCSVWriter(func(out io.Writer) *gocsv.SafeCSVWriter {
 			writer := csv.NewWriter(out)
@@ -97,6 +97,7 @@ func formatAndFilterSchedule(schedule *model.Schedule) []*model.ScheduleCSVRow {
 				if c.NeedsRoom {
 					classroom = c.Classroom.ID
 				}
+				//conflictp := fmt.Sprintf("%v", c.ConflictProbability) // put this in Lecturer to see conflict probability of each course
 				formatted = append(formatted, &model.ScheduleCSVRow{
 					CourseCode: c.DisplayName,
 					Day:        day.DayOfWeek,
@@ -104,7 +105,7 @@ func formatAndFilterSchedule(schedule *model.Schedule) []*model.ScheduleCSVRow {
 					Time:       slotOffset * schedule.TimeSlotDuration,
 					Classrooms: classroom,
 					Class:      c.Class,
-					Department: c.DepartmentCode,
+					Department: c.Department,
 					CourseName: c.Course_Name,
 					Lecturer:   c.Lecturer,
 				})

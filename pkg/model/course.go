@@ -11,9 +11,8 @@ type Course struct {
 	TplusU                   string     `csv:"T+U"`
 	AKTS                     int        `csv:"AKTS"`
 	Class                    int        `csv:"Class"`
-	Depertmant               string     `csv:"Depertmant"`
+	Department               string     `csv:"Depertmant"`
 	Lecturer                 string     `csv:"Lecturer"`
-	DepartmentCode           string     `csv:"Department"`
 	Duration                 int        `csv:"-"`
 	CourseID                 CourseID   `csv:"-"`
 	ConflictingCourses       []CourseID `csv:"-"`
@@ -31,6 +30,5 @@ type Course struct {
 	ServiceCourse            bool       `csv:"_"`
 	HasBeenSplit             bool       `csv:"_"`
 	IsFirstHalf              bool       `csv:"_"`
-	HasLab                   bool       `csv:"_"`
 	PlacedDay                int        `csv:"_"`
 }
