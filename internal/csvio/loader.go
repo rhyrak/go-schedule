@@ -13,7 +13,7 @@ import (
 	"github.com/rhyrak/go-schedule/pkg/model"
 )
 
-// extract substring from a string
+// Extract substring from a string
 func substr(input string, start int, length int) string {
 	asRunes := []rune(input)
 
@@ -29,7 +29,7 @@ func substr(input string, start int, length int) string {
 }
 
 // LoadCourses reads and parses given csv file for course data.
-func LoadCourses(pathToCourses string, pathToReserved string, pathToBusy string, pathToMandatory string, pathToConflicts string, pathToSplit string, delim rune, ignored []string, service []string) ([]*model.Course, []*model.Laboratory, []*model.Reserved, []*model.Busy, []*model.Conflict) {
+func LoadCourses(pathToCourses string, pathToReserved string, pathToBusy string, pathToMandatory string, pathToConflicts string, delim rune, ignored []string, service []string) ([]*model.Course, []*model.Reserved, []*model.Busy, []*model.Conflict, map[string]int) {
 	gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
 		r := csv.NewReader(in)
 		r.Comma = delim
@@ -101,24 +101,13 @@ func LoadCourses(pathToCourses string, pathToReserved string, pathToBusy string,
 		panic(err)
 	}
 
-	splitFile, err := os.OpenFile(pathToSplit, os.O_RDWR, os.ModePerm)
-	if err != nil {
-		fmt.Println("Err00")
-		panic(err)
-	}
-	defer splitFile.Close()
-
-	_splits := []*model.Split{}
-	if err := gocsv.UnmarshalFile(splitFile, &_splits); err != nil {
-		fmt.Println("Err01")
-		panic(err)
-	}
-
 	busy := []*model.Busy{}
 	reserved := []*model.Reserved{}
 	courses := []*model.Course{}
+	// Iterate over courses
 	for _, c := range _courses {
 		ignore := false
+		// Skip ignored courses
 		for _, ignoredCourse := range ignored {
 			if c.Course_Code == ignoredCourse {
 				ignore = true
@@ -126,7 +115,9 @@ func LoadCourses(pathToCourses string, pathToReserved string, pathToBusy string,
 			}
 		}
 		if !ignore {
+			// Sanitize comma character to avoid parsing errors later on
 			c.Course_Name = strings.ReplaceAll(c.Course_Name, ",", "_")
+			// Find Reserved courses
 			for _, reservedCourse := range _reserved {
 				if c.Course_Code == reservedCourse.CourseCodeSTR {
 					c.Reserved = true
@@ -141,6 +132,7 @@ func LoadCourses(pathToCourses string, pathToReserved string, pathToBusy string,
 					break
 				}
 			}
+			// Find  compulsory courses
 			for _, compulsoryCourse := range _mandatory {
 				if c.Course_Code == compulsoryCourse.Course_Code {
 					c.Compulsory = true
@@ -151,10 +143,16 @@ func LoadCourses(pathToCourses string, pathToReserved string, pathToBusy string,
 		}
 	}
 
+	// Combine lines into one
 	busy = mergeBusyDays(busy, _busy)
-	courses, labs := assignCourseProperties(courses, busy, _splits)
 
-	return courses, labs, reserved, busy, _conflicts
+	// Assign miscellaneous properties
+	courses = assignCourseProperties(courses, busy)
+
+	// Count up 4th class courses
+	congestedDepartments := FindFourthClassCount(courses)
+
+	return courses, reserved, busy, _conflicts, congestedDepartments
 }
 
 // LoadClassrooms reads and parses given csv file for classroom data.
@@ -182,13 +180,14 @@ func LoadClassrooms(path string, delim rune) []*model.Classroom {
 	return classrooms
 }
 
-func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits []*model.Split) ([]*model.Course, []*model.Laboratory) {
+func assignCourseProperties(courses []*model.Course, busy []*model.Busy) []*model.Course {
 	additionalCourses := []*model.Course{}
-	additionalLabs := []*model.Laboratory{}
-	var id model.CourseID = 1
+	var id model.CourseID = 1 // UUID
 	for _, course := range courses {
 		course.CourseID = id
 		course.DisplayName = course.Course_Code
+
+		// Parse T+U duration data
 		split := strings.Split(course.TplusU, "+")
 		T, err := strconv.Atoi(split[0])
 		if err != nil {
@@ -202,43 +201,41 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits 
 			fmt.Println(course)
 			panic(err)
 		}
-		hasLab := U != 0
 		var shouldSplit bool = false
 		var firstHalf int = 0
 		var newCourse1 model.Course
 		var newCourse2 model.Course
-		for _, _s := range splits {
-			if _s.Course_Code == course.Course_Code && (_s.Half_Duration > T || _s.Half_Duration <= 0) {
-				fmt.Print(_s)
-				panic("Invalid Half duration!")
-			}
-			if _s.Course_Code == course.Course_Code && _s.Half_Duration < T {
-				shouldSplit = true
-				firstHalf = _s.Half_Duration
-				break
-			}
+
+		// Convert duration to hours
+		course.Duration = 60 * T
+		if T == 0 || (course.Course_Environment == "lab" && U != 0) {
+			course.Duration = 60 * U
 		}
 
+		// Determine whether course should be split
+		shouldSplit = course.Duration > 180 // (3*60)=180 split into two when course is longer than 3 hours
+		firstHalf = course.Duration / 2
+
+		// Split into first half
 		if shouldSplit {
-			secondHalf := T - firstHalf
+			secondHalf := course.Duration - firstHalf
 			newCourse1 = model.Course{
 				Section:                  course.Section,
 				Course_Code:              course.Course_Code,
 				Course_Name:              course.Course_Name,
 				Number_of_Students:       course.Number_of_Students,
-				Course_Environment:       "classroom",
+				Course_Environment:       course.Course_Environment,
 				TplusU:                   course.TplusU,
 				AKTS:                     course.AKTS,
 				Class:                    course.Class,
-				Depertmant:               course.Depertmant,
+				Department:               course.Department,
 				Lecturer:                 course.Lecturer,
-				DepartmentCode:           course.DepartmentCode,
-				Duration:                 firstHalf * 60,
+				Duration:                 firstHalf,
 				CourseID:                 id,
 				ConflictingCourses:       []model.CourseID{},
 				Placed:                   false,
 				Classroom:                nil,
-				NeedsRoom:                true,
+				NeedsRoom:                course.Course_Environment == "classroom",
 				NeededSlots:              0,
 				Reserved:                 false,
 				ReservedStartingTimeSlot: 0,
@@ -250,9 +247,9 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits 
 				ServiceCourse:            false,
 				HasBeenSplit:             true,
 				IsFirstHalf:              true,
-				HasLab:                   hasLab,
 				PlacedDay:                -1,
 			}
+			// Don't forget to assign busy days
 			for _, busyDay := range busy {
 				if busyDay.Lecturer == newCourse1.Lecturer {
 					newCourse1.BusyDays = busyDay.Day
@@ -262,24 +259,24 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits 
 			additionalCourses = append(additionalCourses, &newCourse1)
 			id++
 
+			// Split into second half
 			newCourse2 = model.Course{
 				Section:                  course.Section,
 				Course_Code:              course.Course_Code,
 				Course_Name:              course.Course_Name,
 				Number_of_Students:       course.Number_of_Students,
-				Course_Environment:       "classroom",
+				Course_Environment:       course.Course_Environment,
 				TplusU:                   course.TplusU,
 				AKTS:                     course.AKTS,
 				Class:                    course.Class,
-				Depertmant:               course.Depertmant,
+				Department:               course.Department,
 				Lecturer:                 course.Lecturer,
-				DepartmentCode:           course.DepartmentCode,
-				Duration:                 secondHalf * 60,
+				Duration:                 secondHalf,
 				CourseID:                 id,
 				ConflictingCourses:       []model.CourseID{},
 				Placed:                   false,
 				Classroom:                nil,
-				NeedsRoom:                true,
+				NeedsRoom:                course.Course_Environment == "classroom",
 				NeededSlots:              0,
 				Reserved:                 false,
 				ReservedStartingTimeSlot: 0,
@@ -291,9 +288,9 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits 
 				ServiceCourse:            false,
 				HasBeenSplit:             true,
 				IsFirstHalf:              false,
-				HasLab:                   hasLab,
 				PlacedDay:                -1,
 			}
+			// Don't forget to assign busy days
 			for _, busyDay := range busy {
 				if busyDay.Lecturer == newCourse2.Lecturer {
 					newCourse2.BusyDays = busyDay.Day
@@ -305,68 +302,9 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits 
 
 		}
 
-		course.Duration = 60 * T
-		if T == 0 || (course.Course_Environment == "lab" && U != 0) {
-			course.Duration = 60 * U
-		} else if course.Course_Environment == "classroom" && U != 0 {
-			id++
-			var suffix string
-			if course.DepartmentCode == "MATH" {
-				suffix = " - P"
-			} else {
-				suffix = ""
-			}
-			newLab := model.Laboratory{
-				Section:                  course.Section,
-				Course_Code:              course.Course_Code,
-				Course_Name:              course.Course_Name,
-				Number_of_Students:       course.Number_of_Students,
-				Course_Environment:       "lab",
-				TplusU:                   course.TplusU,
-				AKTS:                     course.AKTS,
-				Class:                    course.Class,
-				Depertmant:               course.Depertmant,
-				Lecturer:                 course.Lecturer,
-				DepartmentCode:           course.DepartmentCode,
-				Duration:                 60 * U,
-				CourseID:                 id,
-				ConflictingCourses:       []model.CourseID{},
-				Placed:                   false,
-				Classroom:                nil,
-				NeedsRoom:                course.DepartmentCode == "MATH",
-				NeededSlots:              0,
-				Reserved:                 false,
-				ReservedStartingTimeSlot: 0,
-				ReservedDay:              0,
-				BusyDays:                 []int{},
-				Compulsory:               course.Compulsory,
-				ConflictProbability:      0.0,
-				DisplayName:              course.Course_Code + suffix,
-				TheoreticalCourseRef:     []*model.Course{},
-			}
-			if course.DepartmentCode == "MATH" {
-				for _, busyDay := range busy {
-					if busyDay.Lecturer == newLab.Lecturer {
-						newLab.BusyDays = busyDay.Day
-						break
-					}
-				}
-			}
-
-			if shouldSplit {
-				newLab.TheoreticalCourseRef = append(newLab.TheoreticalCourseRef, &newCourse1)
-				newLab.TheoreticalCourseRef = append(newLab.TheoreticalCourseRef, &newCourse2)
-			} else {
-				newLab.TheoreticalCourseRef = append(newLab.TheoreticalCourseRef, course)
-			}
-
-			additionalLabs = append(additionalLabs, &newLab)
-			id++
-		}
-
+		// Assign properties to full course if duration is short enough
 		if !shouldSplit {
 			id++
-			course.HasLab = hasLab
 			course.PlacedDay = -1
 			additionalCourses = append(additionalCourses, course)
 			course.NeedsRoom = course.Course_Environment == "classroom"
@@ -379,20 +317,10 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits 
 		}
 	}
 
-	/*
-		for _, c := range courses {
-			if len(c.BusyDays) > 0 {
-				fmt.Printf("%s %s %s %s\n", c.Course_Code, c.Course_Name, c.DepartmentCode, c.Lecturer)
-				for _, v := range c.BusyDays {
-					fmt.Printf("%d ", v)
-				}
-				fmt.Printf("\n")
-			}
-		}
-	*/
-	return additionalCourses, additionalLabs
+	return additionalCourses
 }
 
+// Parse relevant data
 func assignReservedCourseProperties(course *model.Course, reserved *model.Reserved, service []string) {
 	startHH, err0 := strconv.Atoi(substr(reserved.StartingTimeSTR, 0, 2))
 	if err0 != nil {
@@ -453,6 +381,7 @@ func assignReservedCourseProperties(course *model.Course, reserved *model.Reserv
 	}
 }
 
+// Combine multi-line entries into one
 func mergeBusyDays(busy []*model.Busy, multibusy []*model.BusyCSV) []*model.Busy {
 	for _, b1 := range multibusy {
 		busyDay1 := DayToInt(b1.DaySTR, b1.Lecturer)
@@ -500,4 +429,21 @@ func DayToInt(DaySTR string, Lecturer string) int {
 	}
 
 	return -1
+}
+
+// Count how many 4th class courses exist in each department
+func FindFourthClassCount(courses []*model.Course) map[string]int {
+	uniqueDepartments := map[string]int{}
+
+	for _, c := range courses {
+		exists := uniqueDepartments[c.Department]
+		if exists == 0 {
+			exists++
+		}
+		if exists != 0 && c.Class == 4 {
+			uniqueDepartments[c.Department]++
+		}
+	}
+
+	return uniqueDepartments
 }
