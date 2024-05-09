@@ -1,11 +1,9 @@
 package main
 
 import (
-	secureRand "crypto/rand"
 	"fmt"
-	"math/big"
+	"hash/maphash"
 	"math/rand"
-	"strconv"
 	"time"
 
 	"github.com/rhyrak/go-schedule/internal/csvio"
@@ -21,19 +19,21 @@ const (
 	BlacklistFile               = "./res/private/busy.csv"
 	MandatoryFile               = "./res/private/mandatory.csv"
 	ConflictsFile               = "./res/private/conflict.csv"
-	FreeDayFile                 = "./res/private/freeday.csv"
 	ExportFile                  = "schedule"
 	ExportFileExtension         = ".csv"
 	NumberOfDays                = 5
 	TimeSlotDuration            = 60
 	TimeSlotCount               = 9
-	ConflictProbability         = 0.2 // 20%
-	relativeConflictProbability = (1.0 - ConflictProbability) * 2.0
-	IterSoftLimit               = 12000 // Feasible limit up until state 5
+	ConflictProbability         = 0.7 // 70%
+	relativeConflictProbability = ConflictProbability * 2.0
+	IterSoftLimit               = 25000 // Feasible limit up until state 1
 	DepartmentCongestionLimit   = 11
 )
 
 func main() {
+	// Activity Day index
+	var freeday int = 3
+
 	// Parse and instantiate classroom objects from CSV
 	classrooms := csvio.LoadClassrooms(ClassroomsFile, ';')
 
@@ -44,7 +44,7 @@ func main() {
 	serviceCourses := []string{"TİT101", "TİT102", "TDL101", "TDL102", "ENG101", "ENG102"}
 
 	// Parse and instantiate course objects from CSV (ignored courses are not loaded)
-	courses, reserved, busy, conflicts, congestedDepartments, freeday := csvio.LoadCourses(CoursesFile, PriorityFile, BlacklistFile, MandatoryFile, ConflictsFile, FreeDayFile, ';', ignoredCourses, serviceCourses)
+	courses, reserved, busy, conflicts, congestedDepartments := csvio.LoadCourses(CoursesFile, PriorityFile, BlacklistFile, MandatoryFile, ConflictsFile, ';', ignoredCourses, serviceCourses)
 
 	fmt.Println("Professors with their busy schedules are as below:")
 	for _, b := range busy {
@@ -62,25 +62,26 @@ func main() {
 	// Start timer
 	start := time.Now().UnixNano()
 	var schedule *model.Schedule
-	var iter int32
-	var iterUpperLimit int32 = IterSoftLimit + 4999
-	var iterStateTransition int32 = IterSoftLimit / 6
+	var iter int
+	var stateCount int = 2
+	var iterUpperLimit int = IterSoftLimit + 4999 // Extend final state by 5000 iterations (Doomsday)
+	var iterStateTransition int = IterSoftLimit / stateCount
 	var state int = 0
-	var placementProbability = 0.0
+	var placementProbability = 0.1
 	// Try to create a valid schedule upto iterLimit+1 times
 	for iter = 1; iter <= iterUpperLimit; iter++ {
 		// Increment state every iterState iterations and reset FreeDay fill probability
 		if iter%iterStateTransition == 0 {
 			state++
-			placementProbability = 0.0
+			placementProbability = 0.1
 		}
-		// Keep going in 5th state, Also fully unlock FreeDay
-		if state >= 5 {
-			state = 5
+		// Keep going in 2nd state, Also fully unlock Activity Day
+		if state >= stateCount-1 {
+			state = stateCount - 1
 			placementProbability = 1.0
 		}
-		// Increment fill probabilty of FreeDay from 0% to 50% over the course of state iterations
-		placementProbability = placementProbability + 0.00025
+		// Increment fill probabilty of Activity Day from 10% to 60% over the course of state iterations
+		placementProbability = placementProbability + (1 / float64(iterStateTransition*2))
 
 		for _, c := range classrooms {
 			// Initialize an empty classroom-oriented schedule to keep track of classroom utilization throughout the week
@@ -100,11 +101,16 @@ func main() {
 
 		// Fill the empty schedule with course data and assign classrooms to courses
 		scheduler.PlaceReservedCourses(reserved, schedule, classrooms)
-		scheduler.FillCourses(courses, schedule, classrooms, state, placementProbability, freeday, congestedDepartments, DepartmentCongestionLimit)
+		scheduler.FillCourses(courses, schedule, classrooms, placementProbability, freeday, congestedDepartments, DepartmentCongestionLimit)
 
 		// If schedule is valid, break, if not, shove everything out the window and try again (5dk)
-		if valid, _ := scheduler.Validate(courses, schedule, classrooms, congestedDepartments, DepartmentCongestionLimit); valid {
+		valid, sufficientRooms, _ := scheduler.Validate(courses, schedule, classrooms, congestedDepartments, DepartmentCongestionLimit)
+		if valid {
 			break
+		}
+		if !sufficientRooms {
+			// Ask user to enter new classroom(s)
+			// Continue with next iteration
 		}
 	}
 	end := time.Now().UnixNano()
@@ -113,12 +119,17 @@ func main() {
 	outPath := csvio.ExportSchedule(schedule, ExportFile, ExportFileExtension)
 
 	// Validate and print error messages
-	valid, msg := scheduler.Validate(courses, schedule, classrooms, congestedDepartments, DepartmentCongestionLimit)
+	valid, sufficientRooms, msg := scheduler.Validate(courses, schedule, classrooms, congestedDepartments, DepartmentCongestionLimit)
 	if !valid {
 		fmt.Println("Invalid schedule:")
 	} else {
 		fmt.Println("Passed all tests")
 	}
+
+	if !sufficientRooms {
+		// do something useful
+	}
+
 	fmt.Println(msg)
 
 	// Show how evil the schedule is
@@ -126,18 +137,20 @@ func main() {
 	fmt.Printf("State: %d\n", state)
 	fmt.Printf("Cost: %d\n", schedule.Cost)
 	fmt.Printf("Iteration: %d\n", iter)
+	fmt.Printf("Sibling Compulsory Conflict Probability: %1.2f\n", relativeConflictProbability)
+	fmt.Printf("Activity Day Placement Probability: %1.2f\n", placementProbability)
 	fmt.Printf("Timer: %f ms\n", float64(end-start)/1000000.0)
 	fmt.Println("Exported output to: " + outPath)
 }
 
-// Assign props according to state
+// Assign properties according to state
 func InitRuntimeProperties(courses []*model.Course, state int, conflicts []*model.Conflict) []*model.Course {
-	// Calculate random placement probability according to states
-	if state == 2 || state == 3 {
+	// Assign placement probability according to state
+	if state == 0 {
 		for _, c := range courses {
 			// Random float if compulsory
 			if c.Compulsory {
-				c.ConflictProbability = randomSecureF64()
+				c.ConflictProbability = float64(Rand64()) / 18446744073709551615.0 // Divide by UINT64.MAX to obtain 0-1 range
 			}
 		}
 	} else {
@@ -179,26 +192,8 @@ func InitRuntimeProperties(courses []*model.Course, state int, conflicts []*mode
 				}
 			}
 
-			// Conflicting neighbour course
-			switch state {
-			case 0:
-				fallthrough
-			case 1:
-				if (c1.Department == c2.Department) && (c1.Class-c2.Class == 1 || c1.Class-c2.Class == -1) && (c1.Compulsory && c2.Compulsory) {
-					conflict = true
-				}
-			case 2:
-				fallthrough
-			case 3:
-				if (c1.Department == c2.Department) && (c1.Class-c2.Class == 1 || c1.Class-c2.Class == -1) && (c1.Compulsory && c2.Compulsory) && (c1.ConflictProbability+c2.ConflictProbability > relativeConflictProbability) {
-					conflict = true
-				}
-			case 4:
-				fallthrough
-			case 5:
-
-			default:
-				panic("Invalid State: " + strconv.Itoa(state))
+			if state == 0 && (c1.Department == c2.Department) && (c1.Class-c2.Class == 1 || c1.Class-c2.Class == -1) && (c1.Compulsory && c2.Compulsory) && (c1.ConflictProbability+c2.ConflictProbability > relativeConflictProbability) {
+				conflict = true
 			}
 
 			if conflict {
@@ -230,13 +225,7 @@ func InitRuntimeProperties(courses []*model.Course, state int, conflicts []*mode
 
 }
 
-func randomSecureF64() float64 {
-	// Generate a cryptographically secure random number
-	randomInt, err := secureRand.Int(secureRand.Reader, big.NewInt(1000000))
-	if err != nil {
-		panic(err)
-	}
-
-	// Convert the random number to a float between 0 and 1
-	return float64(randomInt.Int64()) / 1000000.0
+// Fast UINT64 RNG
+func Rand64() uint64 {
+	return new(maphash.Hash).Sum64()
 }

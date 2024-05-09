@@ -8,7 +8,7 @@ import (
 
 // Validate checks schedule for conflicts and unassigned courses.
 // Returns false and a message for invalid schedules.
-func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.Classroom, congestedDepartments map[string]int, CongestionLimit int) (bool, string) {
+func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.Classroom, congestedDepartments map[string]int, CongestionLimit int) (bool, bool, string) {
 	var message string
 	var valid bool = true
 	var allAssigned bool
@@ -19,7 +19,7 @@ func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.
 	unassignedCount := 0
 	var unassignedCourses []*model.Course
 	for _, c := range courses {
-		if c.NeedsRoom && !c.Placed {
+		if !c.Placed {
 			unassignedCount++
 			unassignedCourses = append(unassignedCourses, c)
 		}
@@ -45,6 +45,8 @@ func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.
 	hasClassroomCollision = !ok
 	message += msg
 
+	var sufficientRooms bool = true
+
 	// Display messages accordingly
 	if hasClassroomCollision {
 		message = "[FAIL]: Classroom collision check.\n" + message
@@ -61,22 +63,24 @@ func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.
 	if !allAssigned {
 		message = "[FAIL]: Course has room check.\n" + message
 		valid = false
+		sufficientRooms = false
 	} else {
 		message = "[  OK]: Course has room check.\n" + message
 	}
-	var noCongestion bool = true
+	//var noCongestion bool = true
 
 	// Ignore unassigned courses from congested departments (şüpheli) (WIP)
-	for _, c := range unassignedCourses {
-		if !((congestedDepartments[c.Department] >= CongestionLimit) && (!c.Compulsory)) {
-			noCongestion = false
-			return noCongestion, message
+	/*
+		for _, c := range unassignedCourses {
+			if !((congestedDepartments[c.Department] >= CongestionLimit) && (!c.Compulsory)) {
+				noCongestion = false
+				return noCongestion, sufficientRooms, message
+			}
 		}
-	}
-
+	*/
 	// !Silence warning
 	valid = !(!valid)
-	return noCongestion, message
+	return valid, sufficientRooms, message
 }
 
 func checkCourseCollision(schedule *model.Schedule) (bool, string) {

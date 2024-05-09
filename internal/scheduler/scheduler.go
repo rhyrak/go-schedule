@@ -1,11 +1,9 @@
 package scheduler
 
 import (
-	"fmt"
 	"math"
 	"slices"
 	"sort"
-	"strconv"
 
 	"github.com/rhyrak/go-schedule/pkg/model"
 )
@@ -13,30 +11,13 @@ import (
 // FillCourses tries to assign a time and room for all unassigned courses.
 // Returns the number of newly assigned courses.
 // TODO: insert labs after theory
-func FillCourses(courses []*model.Course, schedule *model.Schedule, rooms []*model.Classroom, state int, placementProbability float64, freeDayIndex int, congestedDepartments map[string]int, congestionLimit int) int {
+func FillCourses(courses []*model.Course, schedule *model.Schedule, rooms []*model.Classroom, placementProbability float64, freeDayIndex int, congestedDepartments map[string]int, congestionLimit int) int {
 	sort.Slice(rooms, func(i, j int) bool {
 		return rooms[i].Capacity < rooms[j].Capacity
 	})
 
-	// start at 8:30 or 9:30 according to state
+	// start at 8:30 or 9:30 according to congestion and class
 	var startSlot int
-	switch state {
-	case 1:
-		fallthrough
-	case 3:
-		fallthrough
-	case 5:
-		startSlot = 0
-	case 0:
-		fallthrough
-	case 2:
-		fallthrough
-	case 4:
-		startSlot = 1
-	default:
-		fmt.Println("Err08")
-		panic("Invalid State: " + strconv.Itoa(state))
-	}
 
 	placedCount := 0
 
@@ -46,6 +27,8 @@ func FillCourses(courses []*model.Course, schedule *model.Schedule, rooms []*mod
 		if course.Placed {
 			continue
 		}
+
+		isCongested := congestedDepartments[course.Department] >= congestionLimit
 
 		// Calculate needed time slots
 		course.NeededSlots = int(math.Ceil(float64(course.Duration) / float64(schedule.TimeSlotDuration)))
@@ -61,11 +44,16 @@ func FillCourses(courses []*model.Course, schedule *model.Schedule, rooms []*mod
 			}
 
 			// If less than congestionLimit, put maximum 3 courses per day
-			if congestedDepartments[course.Department] < congestionLimit {
+			if !isCongested {
+				startSlot = 1
 				if !ignoreDailyLimit && day.GradeCounter[course.Department][course.Class] >= 2 {
 					continue
 				}
 			} else {
+				// Start at 8:30 for congested 4th class courses
+				if course.Class == 4 {
+					startSlot = 0
+				}
 				// If more than 10 and Compulsory, 4 (maybe-ish)
 				if course.Compulsory {
 					if !ignoreDailyLimit && day.GradeCounter[course.Department][course.Class] >= 3 {
@@ -83,9 +71,13 @@ func FillCourses(courses []*model.Course, schedule *model.Schedule, rooms []*mod
 			// Enter if current day isn't a busy day for lecturer
 			if !slices.Contains(course.BusyDays, day.DayOfWeek) {
 				var placed bool
-				// If a course exists in the morning hours, try to place current course at 13:30
+				// If a course exists in the morning hours, try to place current course after noon
 				if day.GradeCounter[course.Department][course.Class] > 0 {
-					placed = tryPlaceIntoDay(course, schedule, day.DayOfWeek, day, rooms, schedule.TimeSlotCount/2+1, false)
+					var slotIndex int = schedule.TimeSlotCount/2 + 1
+					if course.Duration == 180 { // (3*60=180) Put at 14:30 if course duration is 3 hours, otherwise 13:30
+						slotIndex = schedule.TimeSlotCount/2 + 2
+					}
+					placed = tryPlaceIntoDay(course, schedule, day.DayOfWeek, day, rooms, slotIndex, false)
 				}
 				// Otherwise try and place it in the morning hours
 				if !placed {

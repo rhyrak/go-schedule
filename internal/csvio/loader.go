@@ -29,7 +29,7 @@ func substr(input string, start int, length int) string {
 }
 
 // LoadCourses reads and parses given csv file for course data.
-func LoadCourses(pathToCourses string, pathToReserved string, pathToBusy string, pathToMandatory string, pathToConflicts string, pathToFreeDay string, delim rune, ignored []string, service []string) ([]*model.Course, []*model.Reserved, []*model.Busy, []*model.Conflict, map[string]int, int) {
+func LoadCourses(pathToCourses string, pathToReserved string, pathToBusy string, pathToMandatory string, pathToConflicts string, delim rune, ignored []string, service []string) ([]*model.Course, []*model.Reserved, []*model.Busy, []*model.Conflict, map[string]int) {
 	gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
 		r := csv.NewReader(in)
 		r.Comma = delim
@@ -101,19 +101,6 @@ func LoadCourses(pathToCourses string, pathToReserved string, pathToBusy string,
 		panic(err)
 	}
 
-	freeDayFile, err := os.OpenFile(pathToFreeDay, os.O_RDWR, os.ModePerm)
-	if err != nil {
-		fmt.Println("Err00")
-		panic(err)
-	}
-	defer freeDayFile.Close()
-
-	_freeDay := []*model.FreeDay{}
-	if err := gocsv.UnmarshalFile(freeDayFile, &_freeDay); err != nil {
-		fmt.Println("Err01")
-		panic(err)
-	}
-
 	busy := []*model.Busy{}
 	reserved := []*model.Reserved{}
 	courses := []*model.Course{}
@@ -165,7 +152,7 @@ func LoadCourses(pathToCourses string, pathToReserved string, pathToBusy string,
 	// Count up 4th class courses
 	congestedDepartments := FindFourthClassCount(courses)
 
-	return courses, reserved, busy, _conflicts, congestedDepartments, (_freeDay[0].Index - 1)
+	return courses, reserved, busy, _conflicts, congestedDepartments
 }
 
 // LoadClassrooms reads and parses given csv file for classroom data.

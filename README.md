@@ -50,12 +50,19 @@ course_code,day,time,duration,classrooms,class,department,course_name
 
 ### Malleable Runtime Constraints
 
-* 1-1999:         starts at 9:30 && neighbouring compulsory courses don't conflict                    (State:0) (Best case) 
-* 2000-3999:      starts at 8:30 && neighbouring compulsory courses don't conflict                                (State:1)
-* 4000-5999:      starts at 9:30 && neighbouring compulsory courses conflict probabilistically                    (State:2)
-* 6000-7999:      starts at 8:30 && neighbouring compulsory courses conflict probabilistically                    (State:3)
-* 8000-9999:      starts at 9:30 && neighbouring compulsory courses conflict                                      (State:4)
-* 10000-17000:    starts at 8:30 && neighbouring compulsory courses conflict                          (State:5) (Worst case)
+Assume we have two states, the soft iteration limit defined as iterSoftLimit and the upper iteration limit defined as iterUpperLimit. </br>
+stateCount = 2 </br>
+iterSoftLimit = 25000 </br>
+iterUpperLimit = iterSoftLimit + 4999 </br>
+
+* 0 - (iterSoftLimit / stateCount): Neighbouring compulsory courses conflict probabilistically          (State:0) (Ideal case)   
+* (iterSoftLimit / stateCount) - iterUpperLimit: Neighbouring compulsory courses conflict                          (State:1) (Worst case)
+
+Starting Slot of the week day is 9:30. </br> </br>
+If a department has 11 or more 4th class elective courses active, then that department is marked as congested and some special treatments are applied... </br>
+If a course belongs to a congested department and is of 4th class, then that course is placed at 8:30. </br> </br>
+If a course already exists in the morning hours, then we try to place the remaining courses in the afternoon... </br>
+If the course's duration is 3 hours, then it is placed at 14:30; Otherwise 13:30 and 15:30 if necessary.
 
 ### Error Codes
 
@@ -71,15 +78,15 @@ course_code,day,time,duration,classrooms,class,department,course_name
 
 ### Special Treatment
 
-#### Make Wednesday Free Again!
-We try to keep Wednesday free of Compulsory courses whenever possible
+#### Make Activity Day Free Again!
+We try to keep One day of the Week free of Compulsory courses whenever possible
 
-* State 0-4: Probability of a Compulsory (!MSE && !MCE) landing on Wednesday starts from 0% and stops at 50% by the end of the state, this value resets after each state transition
-* State 5: Probability of a Compulsory (!MSE && !MCE) landing on Wednesday is always 100%, State 5 is the Worst Case and We want to get by any way we can...
-* MSE || MCE: Wednesday is fully unlocked for these two departments regardless of State or the course being Compulsory or not.
+* State 0: Placement Probability starts from 10% and ends at 60% by the next state transition
+* State 1: Placement Probability is always 100% as State 1 is the Worst case
 
 #### Daily Course Limit
 We try to limit the number of courses existing in a day to distribute the load across the week
 
-* !MSE && !MCE: 3
-* MSE || MCE: If Compulsory, 4. If Elective, 5.
+* If congested and Compulsory, 4
+* If congested and Elective, 5
+* Otherwise 3
