@@ -90,7 +90,7 @@ func formatAndFilterSchedule(schedule *model.Schedule) []*model.ScheduleCSVRow {
 					Time:       slotOffset * schedule.TimeSlotDuration,
 					Classrooms: classroom,
 					Class:      c.Class,
-					Department: c.DepartmentCode,
+					Department: c.Department,
 					CourseName: c.Course_Name,
 					Lecturer:   c.Lecturer,
 				})

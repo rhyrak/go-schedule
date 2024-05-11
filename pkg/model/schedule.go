@@ -57,6 +57,9 @@ func (s *Schedule) CalculateCost() {
 		for i, slot := range day.Slots {
 			if i < len(day.Slots)-1 {
 				for _, c1 := range slot.CourseRefs {
+					if c1.ServiceCourse {
+						continue
+					}
 					for _, collisionCandidate := range day.Slots[i+1].Courses {
 						for _, conflict := range c1.ConflictingCourses {
 							if collisionCandidate == conflict {
