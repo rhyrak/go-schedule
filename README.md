@@ -23,7 +23,7 @@ Lecturer;Busy_Day
 
 - Conflict: (Required) CSV data with following headers
 ```
-Course_Code1;Course_Code2
+Department1;Course_Code1;Department2;Course_Code2
 ```
 
 - Mandatory: (Required) CSV data with following headers
@@ -33,12 +33,17 @@ Course_Code
 
 - Reserved: (Required) CSV data with following headers
 ```
-Course_Code;Day;Starting_Time
+Department;Course_Code;Day;Starting_Time
 ```
 
 - Split: (Required) CSV data with following headers
 ```
-Course_Code;Half_Duration
+Course_Department;Course_Code;Half_Duration
+```
+
+- External: (Required) CSV data with following headers
+```
+Section;Course_Code;Course_Name;Number_of_Students;Course_Environment;T+U;AKTS;Class;Department;Lecturer;Starting_Time;Day
 ```
 
 ### Output

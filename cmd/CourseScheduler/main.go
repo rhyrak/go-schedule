@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"hash/maphash"
 	"math/rand"
+	"slices"
 	"time"
 
 	"github.com/rhyrak/go-schedule/internal/csvio"
@@ -14,11 +15,13 @@ import (
 // Program parameters
 const (
 	ClassroomsFile              = "./res/private/classrooms.csv"
-	CoursesFile                 = "./res/private/courses1.csv"
+	CoursesFile                 = "./res/private/courses2.csv"
 	PriorityFile                = "./res/private/reserved.csv"
 	BlacklistFile               = "./res/private/busy.csv"
 	MandatoryFile               = "./res/private/mandatory.csv"
 	ConflictsFile               = "./res/private/conflict.csv"
+	SplitFile                   = "./res/private/split.csv"
+	ExternalFile                = "./res/private/external.csv"
 	ExportFile                  = "schedule"
 	ExportFileExtension         = ".csv"
 	NumberOfDays                = 5
@@ -40,23 +43,39 @@ func main() {
 	// Don't load these
 	ignoredCourses := []string{"ENGR450", "IE101", "CENG404"}
 
-	// Detect these and pin them to reserved hour if online
-	serviceCourses := []string{"TİT101", "TİT102", "TDL101", "TDL102", "ENG101", "ENG102"}
-
 	// Parse and instantiate course objects from CSV (ignored courses are not loaded)
-	courses, reserved, busy, conflicts, congestedDepartments := csvio.LoadCourses(CoursesFile, PriorityFile, BlacklistFile, MandatoryFile, ConflictsFile, ';', ignoredCourses, serviceCourses)
+	courses, labs, reserved, busy, conflicts, congestedDepartments, uniqueDepartments := csvio.LoadCourses(CoursesFile, PriorityFile, BlacklistFile, MandatoryFile, ConflictsFile, SplitFile, ExternalFile, ';', ignoredCourses)
 
-	fmt.Println("Professors with their busy schedules are as below:")
-	for _, b := range busy {
-		fmt.Print(b.Lecturer + " ")
-		fmt.Println(b.Day)
+	fmt.Println("Loading...")
+
+	for _, d := range uniqueDepartments {
+		fmt.Println(d)
 	}
-
 	fmt.Println()
 
-	fmt.Println("Courses reserved to certain days and hours are as below:")
-	for _, c := range reserved {
-		fmt.Println(c.CourseRef.Department + " " + c.CourseCodeSTR + " " + c.DaySTR + " " + c.StartingTimeSTR)
+	if len(busy) != 0 {
+		fmt.Println("Professors with their busy schedules are as below:")
+		for _, b := range busy {
+			fmt.Print(b.Lecturer + " ")
+			fmt.Println(b.Day)
+		}
+		fmt.Println()
+	}
+
+	if len(reserved) != 0 {
+		fmt.Println("Courses reserved to certain days and hours are as below:")
+		for _, c := range reserved {
+			fmt.Println(c.CourseRef.Department + " " + c.CourseCodeSTR + " " + c.DaySTR + " " + c.StartingTimeSTR)
+		}
+		fmt.Println()
+	}
+
+	if len(conflicts) != 0 {
+		fmt.Println("Courses that explicitly won't conflict with each other are as below:")
+		for _, cc := range conflicts {
+			fmt.Println(cc.Department1 + " " + cc.Course_Code1 + " <-> " + cc.Department2 + " " + cc.Course_Code2)
+		}
+		fmt.Println()
 	}
 
 	// Start timer
@@ -86,10 +105,11 @@ func main() {
 		for _, c := range classrooms {
 			// Initialize an empty classroom-oriented schedule to keep track of classroom utilization throughout the week
 			c.CreateSchedule(NumberOfDays, TimeSlotCount)
+			c.AssignAvailableDays(uniqueDepartments)
 		}
 
 		// Init and assign new conflict probabilities according to state
-		courses = InitRuntimeProperties(courses, state, conflicts)
+		courses, labs = InitRuntimeProperties(courses, labs, state, conflicts)
 
 		// Shuffle around the courses vector randomly to allow for different output opportunities
 		rand.Shuffle(len(courses), func(i, j int) {
@@ -101,10 +121,10 @@ func main() {
 
 		// Fill the empty schedule with course data and assign classrooms to courses
 		scheduler.PlaceReservedCourses(reserved, schedule, classrooms)
-		scheduler.FillCourses(courses, schedule, classrooms, placementProbability, freeday, congestedDepartments, DepartmentCongestionLimit)
+		scheduler.FillCourses(courses, labs, schedule, classrooms, placementProbability, freeday, congestedDepartments, DepartmentCongestionLimit)
 
 		// If schedule is valid, break, if not, shove everything out the window and try again (5dk)
-		valid, sufficientRooms, _ := scheduler.Validate(courses, schedule, classrooms, congestedDepartments, DepartmentCongestionLimit)
+		valid, sufficientRooms, _, _ := scheduler.Validate(courses, labs, schedule, classrooms, congestedDepartments, DepartmentCongestionLimit)
 		if valid {
 			break
 		}
@@ -119,21 +139,39 @@ func main() {
 	outPath := csvio.ExportSchedule(schedule, ExportFile, ExportFileExtension)
 
 	// Validate and print error messages
-	valid, sufficientRooms, msg := scheduler.Validate(courses, schedule, classrooms, congestedDepartments, DepartmentCongestionLimit)
+	valid, sufficientRooms, msg, uc := scheduler.Validate(courses, labs, schedule, classrooms, congestedDepartments, DepartmentCongestionLimit)
 	if !valid {
 		fmt.Println("Invalid schedule:")
 	} else {
 		fmt.Println("Passed all tests")
 	}
 
+	fmt.Print("Unassigned: ")
+	fmt.Println(uc)
+
 	if !sufficientRooms {
 		// do something useful
 	}
+
+	/*
+		for _, c := range classrooms {
+			fmt.Print(c.ID)
+			fmt.Println(c.AvailabilityMap)
+		}
+	*/
 
 	fmt.Println(msg)
 
 	// Show how evil the schedule is
 	schedule.CalculateCost()
+	if len(ignoredCourses) != 0 {
+		fmt.Println("Ignored courses are as below:")
+		for _, g := range ignoredCourses {
+			fmt.Println(g + " is ignored.")
+		}
+		fmt.Println("")
+	}
+
 	fmt.Printf("State: %d\n", state)
 	fmt.Printf("Cost: %d\n", schedule.Cost)
 	fmt.Printf("Iteration: %d\n", iter)
@@ -144,7 +182,7 @@ func main() {
 }
 
 // Assign properties according to state
-func InitRuntimeProperties(courses []*model.Course, state int, conflicts []*model.Conflict) []*model.Course {
+func InitRuntimeProperties(courses []*model.Course, labs []*model.Laboratory, state int, conflicts []*model.Conflict) ([]*model.Course, []*model.Laboratory) {
 	// Assign placement probability according to state
 	if state == 0 {
 		for _, c := range courses {
@@ -153,6 +191,9 @@ func InitRuntimeProperties(courses []*model.Course, state int, conflicts []*mode
 				c.ConflictProbability = float64(Rand64()) / 18446744073709551615.0 // Divide by UINT64.MAX to obtain 0-1 range
 			}
 		}
+		for _, l := range labs {
+			l.ConflictProbability = float64(Rand64()) / 18446744073709551615.0 // Divide by UINT64.MAX to obtain 0-1 range
+		}
 	} else {
 		for _, c := range courses {
 			// 0 if compulsory
@@ -160,12 +201,24 @@ func InitRuntimeProperties(courses []*model.Course, state int, conflicts []*mode
 				c.ConflictProbability = 0.0
 			}
 		}
+		for _, l := range labs {
+			l.ConflictProbability = 0.0
+		}
 	}
 
 	// Reset relevant properties
 	for _, c := range courses {
 		c.ConflictingCourses = []model.CourseID{}
 		c.Placed = false
+		if !c.AreEqual {
+			c.ReservedDay = -1
+		}
+
+	}
+
+	for _, l := range labs {
+		l.ConflictingCourses = []model.CourseID{}
+		l.Placed = false
 	}
 
 	// Find and assign conflicting courses
@@ -186,7 +239,7 @@ func InitRuntimeProperties(courses []*model.Course, state int, conflicts []*mode
 			}
 			// Conflict on purpose
 			for _, cc := range conflicts {
-				if cc.Course_Code1 == c1.Course_Code && cc.Course_Code2 == c2.Course_Code {
+				if cc.Course_Code1 == c1.Course_Code && cc.Course_Code2 == c2.Course_Code && cc.Department1 == c1.Department && cc.Department2 == c2.Department {
 					conflict = true
 					break
 				}
@@ -221,7 +274,112 @@ func InitRuntimeProperties(courses []*model.Course, state int, conflicts []*mode
 		}
 	}
 
-	return courses
+	// Handle Inequal duration split courses
+	for _, c := range courses {
+		if c.HasBeenSplit && !c.AreEqual && c.IsBiggerHalf {
+			for {
+				randNum := rand.Intn(4)
+				if !slices.Contains(c.BusyDays, randNum) {
+					c.ReservedDay = randNum
+					break
+				}
+			}
+		}
+	}
+	// Handle Inequal duration split courses
+	for _, c1 := range courses {
+		if c1.HasBeenSplit && !c1.AreEqual && !c1.IsBiggerHalf {
+			// Search for twin course
+			for _, c2 := range courses {
+				if c1.CourseID == c2.CourseID {
+					continue
+				}
+				if c2.CourseID == c1.OtherHalfID {
+					twinDay := c2.ReservedDay
+					twinRandom := rand.Intn(4 - twinDay)
+					twinRandom = twinRandom + twinDay + 1
+					for {
+						if !slices.Contains(c1.BusyDays, twinRandom) {
+							c1.ReservedDay = twinRandom
+							break
+						}
+					}
+					break
+				}
+			}
+		}
+	}
+
+	for _, l1 := range labs {
+		for _, l2 := range labs {
+			// Skip checking against self
+			if l1.CourseID == l2.CourseID {
+				continue
+			}
+			// Conflicting lecturer
+			var conflict bool = false
+			if l1.Lecturer == l2.Lecturer {
+				conflict = true
+			}
+			// Conflicting sibling lab
+			if l1.Class == l2.Class && l1.Department == l2.Department {
+				conflict = true
+			}
+
+			// Conflicting neighbour lab
+			if (l1.Department == l2.Department) && (l1.Class-l2.Class == 1 || l1.Class-l2.Class == -1) {
+				conflict = true
+			}
+
+			if conflict {
+				l1HasL2 := false
+				l2HasL1 := false
+				for _, v := range l1.ConflictingCourses {
+					if v == l2.CourseID {
+						l1HasL2 = true
+						break
+					}
+				}
+				if !l1HasL2 {
+					l1.ConflictingCourses = append(l1.ConflictingCourses, l2.CourseID)
+				}
+				for _, v := range l2.ConflictingCourses {
+					if v == l1.CourseID {
+						l2HasL1 = true
+						break
+					}
+				}
+				if !l2HasL1 {
+					l2.ConflictingCourses = append(l2.ConflictingCourses, l1.CourseID)
+				}
+			}
+		}
+	}
+
+	for _, l := range labs {
+		for _, c := range courses {
+			// Conflicting lecturer
+			var conflict bool = false
+			if l.Lecturer == c.Lecturer {
+				conflict = true
+			}
+			// Conflicting sibling course
+			if l.Class == c.Class && l.Department == c.Department {
+				conflict = true
+			}
+			// Conflicting neighbour course
+			if state == 0 && (c.Department == l.Department) && (c.Class-l.Class == 1 || c.Class-l.Class == -1) && (c.Compulsory && l.Compulsory) && (c.ConflictProbability+l.ConflictProbability > relativeConflictProbability) {
+				conflict = true
+			}
+
+			if conflict {
+				l.ConflictingCourses = append(l.ConflictingCourses, c.CourseID)
+			}
+		}
+
+	}
+
+	return courses, labs
 
 }
 

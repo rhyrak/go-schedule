@@ -8,7 +8,7 @@ import (
 
 // Validate checks schedule for conflicts and unassigned courses.
 // Returns false and a message for invalid schedules.
-func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.Classroom, congestedDepartments map[string]int, CongestionLimit int) (bool, bool, string) {
+func Validate(courses []*model.Course, labs []*model.Laboratory, schedule *model.Schedule, rooms []*model.Classroom, congestedDepartments map[string]int, CongestionLimit int) (bool, bool, string, int) {
 	var message string
 	var valid bool = true
 	var allAssigned bool
@@ -18,10 +18,18 @@ func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.
 	// Find and store unassigned courses
 	unassignedCount := 0
 	var unassignedCourses []*model.Course
+	var unassignedLabs []*model.Laboratory
 	for _, c := range courses {
 		if !c.Placed {
 			unassignedCount++
 			unassignedCourses = append(unassignedCourses, c)
+		}
+	}
+
+	for _, l := range labs {
+		if !l.Placed {
+			unassignedCount++
+			unassignedLabs = append(unassignedLabs, l)
 		}
 	}
 
@@ -31,8 +39,11 @@ func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.
 		for _, un := range unassignedCourses {
 			message += fmt.Sprintf("THEORY    %t %s %s %d %s\n", un.Compulsory, un.Course_Code, un.Department, un.Number_of_Students, un.Lecturer)
 		}
-
+		for _, un := range unassignedLabs {
+			message += fmt.Sprintf("THEORY    %t %s %s %d %s\n", un.Compulsory, un.Course_Code, un.Department, un.Number_of_Students, un.Lecturer)
+		}
 	}
+
 	allAssigned = unassignedCount == 0
 
 	// Check for course conflict
@@ -80,7 +91,7 @@ func Validate(courses []*model.Course, schedule *model.Schedule, rooms []*model.
 	*/
 	// !Silence warning
 	valid = !(!valid)
-	return valid, sufficientRooms, message
+	return valid, sufficientRooms, message, unassignedCount
 }
 
 func checkCourseCollision(schedule *model.Schedule) (bool, string) {

@@ -1,8 +1,6 @@
 package model
 
-type CourseID uint64
-
-type Course struct {
+type Laboratory struct {
 	Section                  int        `csv:"Section"`
 	Course_Code              string     `csv:"Course_Code"`
 	Course_Name              string     `csv:"Course_Name"`
@@ -28,11 +26,5 @@ type Course struct {
 	ConflictProbability      float64    `csv:"_"`
 	DisplayName              string     `csv:"_"`
 	ServiceCourse            bool       `csv:"_"`
-	HasBeenSplit             bool       `csv:"_"`
-	IsFirstHalf              bool       `csv:"_"`
-	HasLab                   bool       `csv:"_"`
-	PlacedDay                int        `csv:"_"`
-	AreEqual                 bool       `csv:"_"`
-	IsBiggerHalf             bool       `csv:"_"`
-	OtherHalfID              CourseID   `csv:"_"`
+	TheoreticalCourseRef     []*Course  `csv:"_"`
 }

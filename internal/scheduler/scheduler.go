@@ -11,7 +11,7 @@ import (
 // FillCourses tries to assign a time and room for all unassigned courses.
 // Returns the number of newly assigned courses.
 // TODO: insert labs after theory
-func FillCourses(courses []*model.Course, schedule *model.Schedule, rooms []*model.Classroom, placementProbability float64, freeDayIndex int, congestedDepartments map[string]int, congestionLimit int) int {
+func FillCourses(courses []*model.Course, labs []*model.Laboratory, schedule *model.Schedule, rooms []*model.Classroom, placementProbability float64, freeDayIndex int, congestedDepartments map[string]int, congestionLimit int) int {
 	sort.Slice(rooms, func(i, j int) bool {
 		return rooms[i].Capacity < rooms[j].Capacity
 	})
@@ -24,7 +24,7 @@ func FillCourses(courses []*model.Course, schedule *model.Schedule, rooms []*mod
 	// Iterate over courses
 	for _, course := range courses {
 		// Skip course if it has been placed
-		if course.Placed {
+		if course.Placed || course.Reserved {
 			continue
 		}
 
@@ -43,33 +43,7 @@ func FillCourses(courses []*model.Course, schedule *model.Schedule, rooms []*mod
 				continue
 			}
 
-			// If less than congestionLimit, put maximum 3 courses per day
-			if !isCongested {
-				startSlot = 1
-				if !ignoreDailyLimit && day.GradeCounter[course.Department][course.Class] >= 2 {
-					continue
-				}
-			} else {
-				// Start at 8:30 for congested 4th class courses
-				if course.Class == 4 {
-					startSlot = 0
-				}
-				// If more than 10 and Compulsory, 4 (maybe-ish)
-				if course.Compulsory {
-					if !ignoreDailyLimit && day.GradeCounter[course.Department][course.Class] >= 3 {
-						continue
-					}
-					// If more than 10 and elective, 5 (infeasible)
-				} else {
-					if !ignoreDailyLimit && day.GradeCounter[course.Department][course.Class] >= 4 {
-						continue
-					}
-				}
-
-			}
-
-			// Enter if current day isn't a busy day for lecturer
-			if !slices.Contains(course.BusyDays, day.DayOfWeek) {
+			if !course.AreEqual && day.DayOfWeek == course.ReservedDay {
 				var placed bool
 				// If a course exists in the morning hours, try to place current course after noon
 				if day.GradeCounter[course.Department][course.Class] > 0 {
@@ -86,6 +60,165 @@ func FillCourses(courses []*model.Course, schedule *model.Schedule, rooms []*mod
 				if placed {
 					placedCount++
 					course.PlacedDay = day.DayOfWeek
+					break
+				}
+			} else {
+				// If less than congestionLimit, put maximum 3 courses per day
+				if !isCongested {
+					startSlot = 1
+					if !ignoreDailyLimit && day.GradeCounter[course.Department][course.Class] >= 2 {
+						continue
+					}
+				} else {
+					// Start at 8:30 for congested 4th class courses
+					if course.Class == 4 {
+						startSlot = 0
+					}
+					// If more than 10 and Compulsory, 4 (maybe-ish)
+					if course.Compulsory {
+						if !ignoreDailyLimit && day.GradeCounter[course.Department][course.Class] >= 3 {
+							continue
+						}
+						// If more than 10 and elective, 5 (infeasible)
+					} else {
+						if !ignoreDailyLimit && day.GradeCounter[course.Department][course.Class] >= 4 {
+							continue
+						}
+					}
+
+				}
+
+				// Enter if current day isn't a busy day for lecturer
+				if !slices.Contains(course.BusyDays, day.DayOfWeek) {
+					var placed bool
+					// If a course exists in the morning hours, try to place current course after noon
+					if day.GradeCounter[course.Department][course.Class] > 0 {
+						var slotIndex int = schedule.TimeSlotCount/2 + 1
+						if course.Duration == 180 { // (3*60=180) Put at 14:30 if course duration is 3 hours, otherwise 13:30
+							slotIndex = schedule.TimeSlotCount/2 + 2
+						}
+						placed = tryPlaceIntoDay(course, schedule, day.DayOfWeek, day, rooms, slotIndex, false)
+					}
+					// Otherwise try and place it in the morning hours
+					if !placed {
+						placed = tryPlaceIntoDay(course, schedule, day.DayOfWeek, day, rooms, startSlot, false)
+					}
+					if placed {
+						placedCount++
+						course.PlacedDay = day.DayOfWeek
+						break
+					}
+				}
+			}
+
+		}
+	}
+	return placedCount + PlaceLaboratories(labs, schedule, rooms, placementProbability, congestedDepartments, congestionLimit)
+}
+
+func PlaceLaboratories(labs []*model.Laboratory, schedule *model.Schedule, rooms []*model.Classroom, placementProbability float64, congestedDepartments map[string]int, congestionLimit int) int {
+	sort.Slice(rooms, func(i, j int) bool {
+		return rooms[i].Capacity < rooms[j].Capacity
+	})
+	var startSlot int
+
+	placedCount := 0
+	for _, lab := range labs {
+		if lab.Placed {
+			continue
+		}
+		dummyCourse := model.Course{
+			Section:                  lab.Section,
+			Course_Code:              lab.Course_Code,
+			Course_Name:              lab.Course_Name,
+			Number_of_Students:       lab.Number_of_Students,
+			Course_Environment:       "lab",
+			TplusU:                   lab.TplusU,
+			AKTS:                     lab.AKTS,
+			Class:                    lab.Class,
+			Department:               lab.Department,
+			Lecturer:                 lab.Lecturer,
+			Duration:                 lab.Duration,
+			CourseID:                 lab.CourseID,
+			ConflictingCourses:       lab.ConflictingCourses,
+			Placed:                   false,
+			Classroom:                nil,
+			NeedsRoom:                lab.NeedsRoom,
+			NeededSlots:              lab.NeededSlots,
+			Reserved:                 false,
+			ReservedStartingTimeSlot: 0,
+			ReservedDay:              0,
+			BusyDays:                 lab.BusyDays,
+			Compulsory:               lab.Compulsory,
+			ConflictProbability:      0.0,
+			DisplayName:              lab.DisplayName,
+			ServiceCourse:            false,
+			HasBeenSplit:             false,
+			IsFirstHalf:              false,
+			HasLab:                   false,
+			PlacedDay:                -1,
+			AreEqual:                 true,
+			IsBiggerHalf:             false,
+		}
+
+		isCongested := congestedDepartments[dummyCourse.Department] >= congestionLimit
+		dummyCourse.NeededSlots = int(math.Ceil(float64(dummyCourse.Duration) / float64(schedule.TimeSlotDuration)))
+		ignoreDailyLimit := shouldIgnoreDailyLimit(schedule.Days, dummyCourse.Department, dummyCourse.Class)
+
+		var day1, day2 int
+		if lab.TheoreticalCourseRef[0].HasBeenSplit {
+			day1 = lab.TheoreticalCourseRef[0].PlacedDay
+			day2 = lab.TheoreticalCourseRef[1].PlacedDay
+		} else {
+			day1 = lab.TheoreticalCourseRef[0].PlacedDay
+			day2 = day1
+		}
+
+		for _, day := range schedule.Days {
+			// Skip day(s) of theoretical course
+			if day.DayOfWeek == day1 || day.DayOfWeek == day2 {
+				continue
+			}
+			// If less than congestionLimit, put maximum 3 courses per day
+			if !isCongested {
+				startSlot = 1
+				if !ignoreDailyLimit && day.GradeCounter[dummyCourse.Department][dummyCourse.Class] >= 2 {
+					continue
+				}
+			} else {
+				// Start at 8:30 for congested 4th class courses
+				if dummyCourse.Class == 4 {
+					startSlot = 0
+				}
+				// If more than 10 and Compulsory, 4 (maybe-ish)
+				if dummyCourse.Compulsory {
+					if !ignoreDailyLimit && day.GradeCounter[dummyCourse.Department][dummyCourse.Class] >= 3 {
+						continue
+					}
+					// If more than 10 and elective, 5 (infeasible)
+				} else {
+					if !ignoreDailyLimit && day.GradeCounter[dummyCourse.Department][dummyCourse.Class] >= 4 {
+						continue
+					}
+				}
+
+			}
+			if !slices.Contains(dummyCourse.BusyDays, day.DayOfWeek) {
+				var placed bool
+				if day.GradeCounter[dummyCourse.Department][dummyCourse.Class] > 0 {
+					var slotIndex int = schedule.TimeSlotCount/2 + 1
+					if dummyCourse.Duration == 180 { // (3*60=180) Put at 14:30 if course duration is 3 hours, otherwise 13:30
+						slotIndex = schedule.TimeSlotCount/2 + 2
+					}
+					placed = tryPlaceIntoDay(&dummyCourse, schedule, day.DayOfWeek, day, rooms, slotIndex, false)
+				}
+				if !placed {
+					placed = tryPlaceIntoDay(&dummyCourse, schedule, day.DayOfWeek, day, rooms, startSlot, false)
+				}
+				if placed {
+					placedCount++
+					lab.Placed = true
+					lab.Classroom = dummyCourse.Classroom
 					break
 				}
 			}
@@ -125,9 +258,9 @@ func PlaceReservedCourses(courses []*model.Reserved, schedule *model.Schedule, r
 }
 
 // Find a fitting classroom
-func findRoom(rooms []*model.Classroom, capacity int, day int, slot int, neededSlots int) *model.Classroom {
+func findRoom(rooms []*model.Classroom, capacity int, day int, slot int, neededSlots int, department string) *model.Classroom {
 	for _, c := range rooms {
-		if capacity > c.Capacity {
+		if capacity > c.Capacity || !containsINT(c.AvailabilityMap[department], day) {
 			continue
 		}
 		roomOk := true
@@ -204,7 +337,7 @@ func tryPlaceIntoDay(course *model.Course, schedule *model.Schedule,
 		var classroom *model.Classroom = nil
 		if course.NeedsRoom {
 			expectedPopulation := float32(course.Number_of_Students) * 0.8
-			classroom = findRoom(rooms, int(expectedPopulation), dayIndex, start, course.NeededSlots)
+			classroom = findRoom(rooms, int(expectedPopulation), dayIndex, start, course.NeededSlots, course.Department)
 		}
 		if canFit && (classroom != nil || !course.NeedsRoom) {
 			course.Placed = true
@@ -223,4 +356,13 @@ func tryPlaceIntoDay(course *model.Course, schedule *model.Schedule,
 		}
 	}
 	return course.Placed
+}
+
+func containsINT(s []int, e int) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
