@@ -1,8 +1,6 @@
 package model
 
-type CourseID uint64
-
-type Course struct {
+type External struct {
 	Section                  int        `csv:"Section"`
 	Course_Code              string     `csv:"Course_Code"`
 	Course_Name              string     `csv:"Course_Name"`
@@ -11,8 +9,11 @@ type Course struct {
 	TplusU                   string     `csv:"T+U"`
 	AKTS                     int        `csv:"AKTS"`
 	Class                    int        `csv:"Class"`
-	Department               string     `csv:"Depertmant"`
+	Department               string     `csv:"Department"`
 	Lecturer                 string     `csv:"Lecturer"`
+	StartingTimeSTR          string     `csv:"Starting_Time"`
+	DaySTR                   string     `csv:"Day"`
+	CourseRef                *Course    `csv:"_"`
 	Duration                 int        `csv:"-"`
 	CourseID                 CourseID   `csv:"-"`
 	ConflictingCourses       []CourseID `csv:"-"`

@@ -12,7 +12,7 @@ import (
 
 // ExportSchedule formats the schedule data into ScheduleCSVRow structs and
 // writes it to the CSV file specified by the given path.
-func ExportSchedule(schedule *model.Schedule, path string) error {
+func ExportSchedule(schedule *model.Schedule, path string) string {
 	nice := formatAndFilterSchedule(schedule)
 	// Remove file if exists
 	_, err := os.Stat(path)
@@ -27,6 +27,15 @@ func ExportSchedule(schedule *model.Schedule, path string) error {
 		panic(err)
 	}
 
+	// Set Semi-Colon as delimiter (unused currently)
+	/*
+		gocsv.SetCSVWriter(func(out io.Writer) *gocsv.SafeCSVWriter {
+			writer := csv.NewWriter(out)
+			writer.Comma = ';'
+			return gocsv.NewSafeCSVWriter(writer)
+		})
+	*/
+
 	// Write to file
 	err = gocsv.MarshalFile(&nice, out)
 	defer out.Close()
@@ -35,7 +44,7 @@ func ExportSchedule(schedule *model.Schedule, path string) error {
 		panic(err)
 	}
 
-	return nil
+	return path
 }
 
 // PrintSchedule prints weekly schedule grouped by department name.
@@ -83,6 +92,7 @@ func formatAndFilterSchedule(schedule *model.Schedule) []*model.ScheduleCSVRow {
 				if c.NeedsRoom {
 					classroom = c.Classroom.ID
 				}
+				//conflictp := fmt.Sprintf("%v", c.ConflictProbability) // put this in Lecturer to see conflict probability of each course
 				formatted = append(formatted, &model.ScheduleCSVRow{
 					CourseCode: c.DisplayName,
 					Day:        day.DayOfWeek,

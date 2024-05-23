@@ -2,16 +2,14 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
-)
-
-const (
-	MandatoryFile = "./res/private/mandatory.csv"
+	"github.com/rhyrak/go-schedule/internal/scheduler"
 )
 
 func handleGetSchedule(ctx *gin.Context) {
@@ -52,35 +50,65 @@ func handleGetScheduleWithId(ctx *gin.Context) {
 }
 
 func handlePostSchedule(ctx *gin.Context) {
+	timestamp := fmt.Sprintf("%d", time.Now().Unix())
+	cfg := scheduler.NewDefaultConfiguration()
+
 	form, err := ctx.MultipartForm()
 	if err != nil {
+		log.Printf("error reading form: %v\n", err.Error())
 		ctx.String(http.StatusBadRequest, err.Error())
 		return
 	}
 
-	coursesFile := form.File["courses"][0]
-	classroomsFile := form.File["classrooms"][0]
-	priorityFile := form.File["reserved"][0]
-	busyFile := form.File["busy"][0]
-	conflictsFile := form.File["conflicts"][0]
-	if coursesFile == nil || classroomsFile == nil || priorityFile == nil || busyFile == nil || conflictsFile == nil {
+	if form.File["courses"] == nil || form.File["classrooms"] == nil {
+		log.Println("missing file(s): courses? classrooms?")
 		ctx.Status(http.StatusBadRequest)
 		return
 	}
-	timestamp := fmt.Sprintf("%d", time.Now().Unix())
+	coursesFile := form.File["courses"][0]
+	classroomsFile := form.File["classrooms"][0]
 	CoursesPath := "db/" + timestamp + coursesFile.Filename
 	ClassroomsPath := "db/" + timestamp + classroomsFile.Filename
-	PriorityPath := "db/" + timestamp + priorityFile.Filename
-	BusyPath := "db/" + timestamp + busyFile.Filename
-	ConflictsPath := "db/" + timestamp + conflictsFile.Filename
 	ctx.SaveUploadedFile(coursesFile, CoursesPath)
 	ctx.SaveUploadedFile(classroomsFile, ClassroomsPath)
-	ctx.SaveUploadedFile(priorityFile, PriorityPath)
-	ctx.SaveUploadedFile(busyFile, BusyPath)
-	ctx.SaveUploadedFile(conflictsFile, ConflictsPath)
-	ExportFile := "db/generated/" + timestamp + "-schedule.csv"
+	cfg.CoursesFile = CoursesPath
+	cfg.ClassroomsFile = ClassroomsPath
 
-	go createAndExportSchedule(ClassroomsPath, CoursesPath, PriorityPath, BusyPath, MandatoryFile, ExportFile, ConflictsPath)
+	if form.File["reserved"] != nil {
+		priorityFile := form.File["reserved"][0]
+		PriorityPath := "db/" + timestamp + priorityFile.Filename
+		ctx.SaveUploadedFile(priorityFile, PriorityPath)
+		cfg.PriorityFile = PriorityPath
+	}
+	if form.File["busy"] != nil {
+		busyFile := form.File["busy"][0]
+		BusyPath := "db/" + timestamp + busyFile.Filename
+		ctx.SaveUploadedFile(busyFile, BusyPath)
+		cfg.BlacklistFile = BusyPath
+	}
+	if form.File["conflicts"] != nil {
+		conflictsFile := form.File["conflicts"][0]
+		ConflictsPath := "db/" + timestamp + conflictsFile.Filename
+		ctx.SaveUploadedFile(conflictsFile, ConflictsPath)
+		cfg.ConflictsFile = ConflictsPath
+	}
+	if form.File["splits"] != nil {
+		splitsFile := form.File["splits"][0]
+		SplitsPath := "db/" + timestamp + splitsFile.Filename
+		ctx.SaveUploadedFile(splitsFile, SplitsPath)
+		cfg.SplitFile = SplitsPath
+	}
+	if form.File["externals"] != nil {
+		externalsFile := form.File["externals"][0]
+		ExternalsPath := "db/" + timestamp + externalsFile.Filename
+		ctx.SaveUploadedFile(externalsFile, ExternalsPath)
+		cfg.ExternalFile = ExternalsPath
+	}
+
+	cfg.ExportFile = "db/generated/" + timestamp + "-schedule.csv"
+	log.Printf("Generating schedule with the configuration:\n%v\n", cfg)
+
+	go createAndExportSchedule(cfg)
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"id": timestamp,
