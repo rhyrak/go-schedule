@@ -41,6 +41,11 @@ Course_Code;Day;Starting_Time
 Course_Code;Half_Duration
 ```
 
+- External: (Required) CSV data with following headers
+```
+Section;Course_Code;Course_Name;Number_of_Students;Course_Environment;T+U;AKTS;Class;Department;Lecturer;Starting_Time;Day
+```
+
 ### Output
 
 - Schedule: CSV data with following headers
@@ -90,3 +95,30 @@ We try to limit the number of courses existing in a day to distribute the load a
 * If congested and Compulsory, 4
 * If congested and Elective, 5
 * Otherwise 3
+
+congested means that a department has 11 or more elective courses in its 4th year.
+
+### General Program Structure
+
+#### Directory structure
+Data classes are located under pkg/model/ </br>
+Resource files are located under res/private/ </br>
+I/O handlers are located under internal/csvio/ </br>
+Scheduler related source files are located under internal/scheduler/ </br>
+CLI Main executable is located under cmd/cli/ </br>
+Server Main executable and realted handlers are located under cmd/server/ </br>
+
+#### Program Pseudo-code
+Step - 1: Read classrooms csv </br>
+Step - 2: Read courses csv and related restriction csv(s) </br>
+Step - 3: Repeat until valid schedule </br>
+&emsp;&emsp; Step - 4: Initialize classrooms oriented schedule </br>
+&emsp;&emsp; Step - 5: Assign stateful course properties and shuffle around courses vector </br>
+&emsp;&emsp; Step - 6: Initialize empty weekly schedule </br>
+&emsp;&emsp; Step - 7: Insert reserved courses </br>
+&emsp;&emsp; Step - 8: Insert courses </br>
+&emsp;&emsp; Step - 9: Check for schedule validity </br>
+&emsp;&emsp; Step - 10: Break out if schedule is valid </br>
+Step - 11: Export schedule to disk </br>
+
+

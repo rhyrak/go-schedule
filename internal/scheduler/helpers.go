@@ -15,7 +15,6 @@ type Configuration struct {
 	NumberOfDays                int
 	TimeSlotDuration            int
 	TimeSlotCount               int
-	ConflictProbability         float64
 	RelativeConflictProbability float64
 	IterSoftLimit               int
 	DepartmentCongestionLimit   int
@@ -36,9 +35,8 @@ func NewDefaultConfiguration() *Configuration {
 		NumberOfDays:                5,
 		TimeSlotDuration:            60,
 		TimeSlotCount:               9,
-		ConflictProbability:         0.7, // 70%
-		RelativeConflictProbability: 0.7 * 2,
-		IterSoftLimit:               25000, // Feasible limit up until state 1
+		RelativeConflictProbability: 0.7 * 2, // 70%
+		IterSoftLimit:               25000,   // Feasible limit up until state 1
 		DepartmentCongestionLimit:   11,
 		ActivityDay:                 3,
 	}
