@@ -40,7 +40,7 @@ func Validate(courses []*model.Course, labs []*model.Laboratory, schedule *model
 			message += fmt.Sprintf("THEORY    %t %s %s %d %s\n", un.Compulsory, un.Course_Code, un.Department, un.Number_of_Students, un.Lecturer)
 		}
 		for _, un := range unassignedLabs {
-			message += fmt.Sprintf("THEORY    %t %s %s %d %s\n", un.Compulsory, un.Course_Code, un.Department, un.Number_of_Students, un.Lecturer)
+			message += fmt.Sprintf("LABORATORY    %t %s %s %d %s\n", un.Compulsory, un.Course_Code, un.Department, un.Number_of_Students, un.Lecturer)
 		}
 	}
 
@@ -89,8 +89,6 @@ func Validate(courses []*model.Course, labs []*model.Laboratory, schedule *model
 			}
 		}
 	*/
-	// !Silence warning
-	valid = !(!valid)
 	return valid, sufficientRooms, message, unassignedCount
 }
 

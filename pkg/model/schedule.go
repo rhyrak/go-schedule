@@ -8,9 +8,10 @@ type TimeSlot struct {
 }
 
 type Day struct {
-	Slots        []*TimeSlot
-	GradeCounter map[string][]int // GradeCounter["Department"][Grade] = PlacedCount
-	DayOfWeek    int
+	Slots              []*TimeSlot
+	GradeCounter       map[string][]int // GradeCounter["Department"][Grade] = PlacedCount
+	GradeCreditCounter map[string][]int // GradeCreditCounter["Department"][Grade] = PlacedAKTS
+	DayOfWeek          int
 }
 
 type Schedule struct {
@@ -43,6 +44,7 @@ func NewSchedule(days int, timeSlotDuration int, timeSlotCount int) *Schedule {
 			schedule.Days[i].Slots[j] = new(TimeSlot)
 		}
 		schedule.Days[i].GradeCounter = make(map[string][]int)
+		schedule.Days[i].GradeCreditCounter = make(map[string][]int)
 	}
 	rand.Shuffle(len(schedule.Days), func(i, j int) {
 		schedule.Days[i], schedule.Days[j] = schedule.Days[j], schedule.Days[i]

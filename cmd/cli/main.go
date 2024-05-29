@@ -13,7 +13,7 @@ import (
 // Program parameters
 var cfg = &scheduler.Configuration{
 	ClassroomsFile:              "./res/private/classrooms.csv",
-	CoursesFile:                 "./res/private/courses2.csv",
+	CoursesFile:                 "./res/private/courses1.csv",
 	PriorityFile:                "./res/private/reserved.csv",
 	BlacklistFile:               "./res/private/busy.csv",
 	MandatoryFile:               "./res/private/mandatory.csv",
@@ -41,17 +41,42 @@ func main() {
 	courses, labs, reserved, busy, conflicts, congestedDepartments, uniqueDepartments := csvio.LoadCourses(cfg, ';', ignoredCourses)
 
 	fmt.Println("Loading...")
+	fmt.Println()
 
+	fmt.Println("Departments are as below:")
 	for _, d := range uniqueDepartments {
 		fmt.Println(d)
 	}
 	fmt.Println()
 
+	if len(ignoredCourses) != 0 {
+		fmt.Println("Ignored courses are as below:")
+		for _, g := range ignoredCourses {
+			fmt.Println(g + " is ignored.")
+		}
+		fmt.Println("")
+	}
+
 	if len(busy) != 0 {
 		fmt.Println("Professors with their busy schedules are as below:")
 		for _, b := range busy {
 			fmt.Print(b.Lecturer + " ")
-			fmt.Println(b.Day)
+			fmt.Print("[")
+			for _, d := range b.Day {
+				switch d {
+				case 0:
+					fmt.Print(" Monday ")
+				case 1:
+					fmt.Print(" Tuesday ")
+				case 2:
+					fmt.Print(" Wednesday ")
+				case 3:
+					fmt.Print(" Thursday ")
+				case 4:
+					fmt.Print(" Friday ")
+				}
+			}
+			fmt.Println("]")
 		}
 		fmt.Println()
 	}
@@ -115,16 +140,18 @@ func main() {
 
 		// Fill the empty schedule with course data and assign classrooms to courses
 		scheduler.PlaceReservedCourses(reserved, schedule, classrooms)
-		scheduler.FillCourses(courses, labs, schedule, classrooms, placementProbability, cfg.ActivityDay, congestedDepartments, cfg.DepartmentCongestionLimit)
+		allAssigned, _ := scheduler.FillCourses(courses, labs, schedule, classrooms, placementProbability, cfg.ActivityDay, congestedDepartments, cfg.DepartmentCongestionLimit)
 
-		// If schedule is valid, break, if not, shove everything out the window and try again (5dk)
-		valid, sufficientRooms, _, _ := scheduler.Validate(courses, labs, schedule, classrooms, congestedDepartments, cfg.DepartmentCongestionLimit)
-		if valid {
-			break
-		}
-		if !sufficientRooms {
-			// Ask user to enter new classroom(s)
-			// Continue with next iteration
+		if allAssigned {
+			// If schedule is valid, break, if not, shove everything out the window and try again (5dk)
+			valid, sufficientRooms, _, _ := scheduler.Validate(courses, labs, schedule, classrooms, congestedDepartments, cfg.DepartmentCongestionLimit)
+			if valid {
+				break
+			}
+			if !sufficientRooms {
+				// Ask user to enter new classroom(s)
+				// Continue with next iteration
+			}
 		}
 	}
 	end := time.Now().UnixNano()
@@ -158,19 +185,11 @@ func main() {
 
 	// Show how evil the schedule is
 	schedule.CalculateCost()
-	if len(ignoredCourses) != 0 {
-		fmt.Println("Ignored courses are as below:")
-		for _, g := range ignoredCourses {
-			fmt.Println(g + " is ignored.")
-		}
-		fmt.Println("")
-	}
-
 	fmt.Printf("State: %d\n", state)
 	fmt.Printf("Cost: %d\n", schedule.Cost)
 	fmt.Printf("Iteration: %d\n", iter)
-	fmt.Printf("Sibling Compulsory Conflict Probability: %1.2f\n", cfg.RelativeConflictProbability)
-	fmt.Printf("Activity Day Placement Probability: %1.2f\n", placementProbability)
-	fmt.Printf("Timer: %f ms\n", float64(end-start)/1000000.0)
+	fmt.Printf("Sibling Compulsory Conflict Probability: %1.2f%%\n", cfg.RelativeConflictProbability/2.0*100.0)
+	fmt.Printf("Activity Day Placement Probability: %1.2f%%\n", placementProbability*100.0)
+	fmt.Printf("Elapsed Time: %f ms\n", float64(end-start)/1000000.0)
 	fmt.Println("Exported output to: " + outPath)
 }
