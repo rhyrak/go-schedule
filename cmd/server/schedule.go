@@ -60,7 +60,7 @@ func createAndExportSchedule(cfg *scheduler.Configuration) {
 
 		// Fill the empty schedule with course data and assign classrooms to courses
 		scheduler.PlaceReservedCourses(reserved, schedule, classrooms)
-		allAssigned, _ := scheduler.FillCourses(courses, labs, schedule, classrooms, placementProbability, cfg.ActivityDay, congestedDepartments, cfg.DepartmentCongestionLimit)
+		allAssigned, _ := scheduler.FillCourses(courses, labs, schedule, classrooms, placementProbability, cfg.ActivityDay, congestedDepartments, cfg.DepartmentCongestionLimit, state)
 
 		if allAssigned {
 			// If schedule is valid, break, if not, shove everything out the window and try again (5dk)

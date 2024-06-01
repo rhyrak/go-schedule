@@ -9,7 +9,7 @@ type Course struct {
 	Number_of_Students       int        `csv:"Number_of_Students"`
 	Course_Environment       string     `csv:"Course_Environment"`
 	TplusU                   string     `csv:"T+U"`
-	AKTS                     int        `csv:"AKTS"`
+	AKTS                     float32    `csv:"AKTS"`
 	Class                    int        `csv:"Class"`
 	Department               string     `csv:"Depertmant"`
 	Lecturer                 string     `csv:"Lecturer"`

@@ -13,7 +13,7 @@ import (
 // Program parameters
 var cfg = &scheduler.Configuration{
 	ClassroomsFile:              "./res/private/classrooms.csv",
-	CoursesFile:                 "./res/private/courses1.csv",
+	CoursesFile:                 "./res/private/courses2.csv",
 	PriorityFile:                "./res/private/reserved.csv",
 	BlacklistFile:               "./res/private/busy.csv",
 	MandatoryFile:               "./res/private/mandatory.csv",
@@ -25,7 +25,7 @@ var cfg = &scheduler.Configuration{
 	TimeSlotDuration:            60,
 	TimeSlotCount:               9,
 	RelativeConflictProbability: 0.7 * 2, // 70%
-	IterSoftLimit:               25000,   // Feasible limit up until state 1
+	IterSoftLimit:               2000,    // Feasible limit up until state 1
 	DepartmentCongestionLimit:   11,
 	ActivityDay:                 3,
 }
@@ -100,12 +100,16 @@ func main() {
 	// Start timer
 	start := time.Now().UnixNano()
 	var schedule *model.Schedule
+	var optimalSchedule *model.Schedule
+	var optimalCourses []*model.Course
+	var optimalLabs []*model.Laboratory
 	var iter int
 	var stateCount int = 2
 	var iterUpperLimit int = cfg.IterSoftLimit + 4999 // Extend final state by 5000 iterations (Doomsday)
 	var iterStateTransition int = cfg.IterSoftLimit / stateCount
 	var state int = 0
 	var placementProbability = 0.1
+	unassignedCount := 214748364
 	// Try to create a valid schedule upto iterLimit+1 times
 	for iter = 1; iter <= iterUpperLimit; iter++ {
 		// Increment state every iterState iterations and reset FreeDay fill probability
@@ -113,13 +117,15 @@ func main() {
 			state++
 			placementProbability = 0.1
 		}
+
+		// Increment fill probabilty of Activity Day from 10% to 60% over the course of state iterations
+		placementProbability = placementProbability + (1 / float64(iterStateTransition*2))
+
 		// Keep going in 2nd state, Also fully unlock Activity Day
 		if state >= stateCount-1 {
 			state = stateCount - 1
 			placementProbability = 1.0
 		}
-		// Increment fill probabilty of Activity Day from 10% to 60% over the course of state iterations
-		placementProbability = placementProbability + (1 / float64(iterStateTransition*2))
 
 		for _, c := range classrooms {
 			// Initialize an empty classroom-oriented schedule to keep track of classroom utilization throughout the week
@@ -140,27 +146,36 @@ func main() {
 
 		// Fill the empty schedule with course data and assign classrooms to courses
 		scheduler.PlaceReservedCourses(reserved, schedule, classrooms)
-		allAssigned, _ := scheduler.FillCourses(courses, labs, schedule, classrooms, placementProbability, cfg.ActivityDay, congestedDepartments, cfg.DepartmentCongestionLimit)
+		scheduler.FillCourses(courses, labs, schedule, classrooms, placementProbability, cfg.ActivityDay, congestedDepartments, cfg.DepartmentCongestionLimit, state)
 
-		if allAssigned {
-			// If schedule is valid, break, if not, shove everything out the window and try again (5dk)
-			valid, sufficientRooms, _, _ := scheduler.Validate(courses, labs, schedule, classrooms, congestedDepartments, cfg.DepartmentCongestionLimit)
-			if valid {
-				break
-			}
-			if !sufficientRooms {
-				// Ask user to enter new classroom(s)
-				// Continue with next iteration
-			}
+		// If schedule is valid, break, if not, shove everything out the window and try again (5dk)
+		valid, sufficientRooms, _, cnt := scheduler.Validate(courses, labs, schedule, classrooms, congestedDepartments, cfg.DepartmentCongestionLimit)
+		if valid {
+			optimalSchedule = schedule.DeepCopy()
+			optimalCourses = model.DeepCopyCourses(courses)
+			optimalLabs = model.DeepCopyLaboratories(labs)
+			break
 		}
+		// Update least-faulty schedule
+		if cnt <= unassignedCount {
+			unassignedCount = cnt
+			optimalSchedule = schedule.DeepCopy()
+			optimalCourses = model.DeepCopyCourses(courses)
+			optimalLabs = model.DeepCopyLaboratories(labs)
+		}
+		if !sufficientRooms {
+			// Ask user to enter new classroom(s)
+			// Continue with next iteration
+		}
+
 	}
 	end := time.Now().UnixNano()
 
 	// Write newly created schedule to disk
-	outPath := csvio.ExportSchedule(schedule, cfg.ExportFile)
+	outPath := csvio.ExportSchedule(optimalSchedule, cfg.ExportFile)
 
 	// Validate and print error messages
-	valid, sufficientRooms, msg, uc := scheduler.Validate(courses, labs, schedule, classrooms, congestedDepartments, cfg.DepartmentCongestionLimit)
+	valid, sufficientRooms, msg, uc := scheduler.Validate(optimalCourses, optimalLabs, optimalSchedule, classrooms, congestedDepartments, cfg.DepartmentCongestionLimit)
 	if !valid {
 		fmt.Println("Invalid schedule:")
 	} else {
@@ -183,12 +198,17 @@ func main() {
 
 	fmt.Println(msg)
 
+	c := cfg.RelativeConflictProbability / 2.0 * 100.0
+	if state == 1 {
+		c = 100
+	}
+
 	// Show how evil the schedule is
-	schedule.CalculateCost()
+	optimalSchedule.CalculateCost()
 	fmt.Printf("State: %d\n", state)
-	fmt.Printf("Cost: %d\n", schedule.Cost)
+	fmt.Printf("Cost: %d\n", optimalSchedule.Cost)
 	fmt.Printf("Iteration: %d\n", iter)
-	fmt.Printf("Sibling Compulsory Conflict Probability: %1.2f%%\n", cfg.RelativeConflictProbability/2.0*100.0)
+	fmt.Printf("Sibling Compulsory Conflict Probability: %1.2f%%\n", c)
 	fmt.Printf("Activity Day Placement Probability: %1.2f%%\n", placementProbability*100.0)
 	fmt.Printf("Elapsed Time: %f ms\n", float64(end-start)/1000000.0)
 	fmt.Println("Exported output to: " + outPath)

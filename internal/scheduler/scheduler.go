@@ -12,7 +12,7 @@ import (
 // FillCourses tries to assign a time and room for all unassigned courses.
 // Returns the number of newly assigned courses.
 // TODO: insert labs after theory
-func FillCourses(courses []*model.Course, labs []*model.Laboratory, schedule *model.Schedule, rooms []*model.Classroom, placementProbability float64, freeDayIndex int, congestedDepartments map[string]int, congestionLimit int) (bool, int) {
+func FillCourses(courses []*model.Course, labs []*model.Laboratory, schedule *model.Schedule, rooms []*model.Classroom, placementProbability float64, freeDayIndex int, congestedDepartments map[string]int, congestionLimit int, state int) (bool, int) {
 	sort.Slice(rooms, func(i, j int) bool {
 		return rooms[i].Capacity < rooms[j].Capacity
 	})
@@ -70,7 +70,7 @@ func FillCourses(courses []*model.Course, labs []*model.Laboratory, schedule *mo
 				if !isCongested {
 					startSlot = 1
 					if !ignoreDailyLimit && day.GradeCounter[course.Department][course.Class] >= 2 &&
-						!ignoreAKTSLimit && day.GradeCreditCounter[course.Department][course.Class] > 10 {
+						!ignoreAKTSLimit && day.GradeCreditCounter[course.Department][course.Class] > 7.0 {
 						continue
 					}
 				} else {
@@ -114,7 +114,7 @@ func FillCourses(courses []*model.Course, labs []*model.Laboratory, schedule *mo
 				}
 			}
 		}
-		if !placed {
+		if !placed && state == 0 {
 			return false, -1
 		}
 	}
@@ -139,7 +139,7 @@ func PlaceLaboratories(labs []*model.Laboratory, schedule *model.Schedule, rooms
 			Number_of_Students:       lab.Number_of_Students,
 			Course_Environment:       "lab",
 			TplusU:                   lab.TplusU,
-			AKTS:                     0,
+			AKTS:                     lab.AKTS,
 			Class:                    lab.Class,
 			Department:               lab.Department,
 			Lecturer:                 lab.Lecturer,
@@ -169,6 +169,7 @@ func PlaceLaboratories(labs []*model.Laboratory, schedule *model.Schedule, rooms
 		isCongested := congestedDepartments[dummyCourse.Department] >= congestionLimit
 		dummyCourse.NeededSlots = int(math.Ceil(float64(dummyCourse.Duration) / float64(schedule.TimeSlotDuration)))
 		ignoreDailyLimit := shouldIgnoreDailyLimit(schedule.Days, dummyCourse.Department, dummyCourse.Class)
+		ignoreAKTSLimit := shouldIgnoreAKTSLimit(schedule.Days, dummyCourse.Department, dummyCourse.Class)
 
 		var day1, day2 int
 		if lab.TheoreticalCourseRef[0].HasBeenSplit {
@@ -187,7 +188,8 @@ func PlaceLaboratories(labs []*model.Laboratory, schedule *model.Schedule, rooms
 			// If less than congestionLimit, put maximum 3 courses per day
 			if !isCongested {
 				startSlot = 1
-				if !ignoreDailyLimit && day.GradeCounter[dummyCourse.Department][dummyCourse.Class] >= 2 {
+				if !ignoreDailyLimit && day.GradeCounter[dummyCourse.Department][dummyCourse.Class] >= 2 &&
+					!ignoreAKTSLimit && day.GradeCreditCounter[dummyCourse.Department][dummyCourse.Class] > 7.0 {
 					continue
 				}
 			} else {
@@ -258,8 +260,6 @@ func PlaceReservedCourses(courses []*model.Reserved, schedule *model.Schedule, r
 		placed := tryPlaceIntoDay(course.CourseRef, schedule, day.DayOfWeek, day, rooms, course.CourseRef.ReservedStartingTimeSlot, course.CourseRef.ServiceCourse)
 		if placed {
 			placedCount++
-			// Revert added AKTS from reserved course
-			day.GradeCreditCounter[course.Department][course.CourseRef.Class] = day.GradeCreditCounter[course.Department][course.CourseRef.Class] - course.CourseRef.AKTS
 		}
 	}
 	return placedCount
@@ -306,9 +306,9 @@ func shouldIgnoreAKTSLimit(days []*model.Day, department string, grade int) bool
 	for _, day := range days {
 		_, ok := day.GradeCreditCounter[department]
 		if !ok {
-			day.GradeCreditCounter[department] = make([]int, 5)
+			day.GradeCreditCounter[department] = make([]float32, 5)
 		}
-		if day.GradeCreditCounter[department][grade] > 10 {
+		if day.GradeCreditCounter[department][grade] > 6.0 {
 			dailyLimitCounter++
 		}
 	}

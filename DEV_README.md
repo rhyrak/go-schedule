@@ -8,7 +8,7 @@
 - Courses: (Required) CSV data with following headers
 
 ```
-Section;Course_Code;Course_Name;Number_of_Students;Course_Environment;T+U;AKTS;Class;Depertmant;Lecturer;Department
+Section;Course_Code;Course_Name;Number_of_Students;Course_Environment;T+U;AKTS;Class;Depertmant;Lecturer
 ```
 
 - Classroom: (Required) CSV data with following headers
@@ -23,7 +23,7 @@ Lecturer;Busy_Day
 
 - Conflict: (Required) CSV data with following headers
 ```
-Course_Code1;Course_Code2
+Department1;Course_Code1;Department2;Course_Code2
 ```
 
 - Mandatory: (Required) CSV data with following headers
@@ -33,12 +33,12 @@ Course_Code
 
 - Reserved: (Required) CSV data with following headers
 ```
-Course_Code;Day;Starting_Time
+Department;Course_Code;Day;Starting_Time
 ```
 
 - Split: (Required) CSV data with following headers
 ```
-Course_Code;Half_Duration
+Department;Course_Code;Half_Duration
 ```
 
 - External: (Required) CSV data with following headers
@@ -57,7 +57,7 @@ course_code,day,time,duration,classrooms,class,department,course_name
 
 Assume we have two states, the soft iteration limit defined as iterSoftLimit and the upper iteration limit defined as iterUpperLimit. </br>
 stateCount = 2 </br>
-iterSoftLimit = 25000 </br>
+iterSoftLimit = 2000 </br>
 iterUpperLimit = iterSoftLimit + 4999 </br>
 
 * 0 - (iterSoftLimit / stateCount): Neighbouring compulsory courses conflict probabilistically          (State:0) (Ideal case)   
@@ -96,7 +96,8 @@ We try to limit the number of courses existing in a day to distribute the load a
 * If congested and Elective, 5
 * Otherwise 3
 
-congested means that a department has 11 or more elective courses in its 4th year.
+congested means that a department has 11 or more elective courses in its 4th year. </br> </br>
+Additionally, we try to spread out the courses across the week evenly by having a soft AKTS limit for each day that is ignored when it is exceeded on all days of the week.
 
 ### General Program Structure
 
@@ -119,6 +120,7 @@ Step - 3: Repeat until valid schedule </br>
 &emsp;&emsp; Step - 8: Insert courses </br>
 &emsp;&emsp; Step - 9: Check for schedule validity </br>
 &emsp;&emsp; Step - 10: Break out if schedule is valid </br>
+&emsp;&emsp; Step - 11: Update optimal schedule </br>
 Step - 11: Export schedule to disk </br>
 
 

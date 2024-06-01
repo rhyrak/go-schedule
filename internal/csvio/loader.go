@@ -299,6 +299,8 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits 
 			}
 		}
 
+		ratio := float32(firstHalf) / float32(T)
+
 		// Split into first half
 		if shouldSplit {
 			secondHalf = T - firstHalf
@@ -309,7 +311,7 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits 
 				Number_of_Students:       course.Number_of_Students,
 				Course_Environment:       course.Course_Environment,
 				TplusU:                   course.TplusU,
-				AKTS:                     course.AKTS,
+				AKTS:                     course.AKTS * ratio,
 				Class:                    course.Class,
 				Department:               course.Department,
 				Lecturer:                 course.Lecturer,
@@ -346,6 +348,7 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits 
 			additionalCourses = append(additionalCourses, &newCourse1)
 			id++
 
+			ratio = float32(secondHalf) / float32(T)
 			// Split into second half
 			newCourse2 = model.Course{
 				Section:                  course.Section,
@@ -354,7 +357,7 @@ func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits 
 				Number_of_Students:       course.Number_of_Students,
 				Course_Environment:       course.Course_Environment,
 				TplusU:                   course.TplusU,
-				AKTS:                     course.AKTS,
+				AKTS:                     course.AKTS * ratio,
 				Class:                    course.Class,
 				Department:               course.Department,
 				Lecturer:                 course.Lecturer,
