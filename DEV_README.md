@@ -60,8 +60,8 @@ stateCount = 2 </br>
 iterSoftLimit = 2000 </br>
 iterUpperLimit = iterSoftLimit + 4999 </br>
 
-* 0 - (iterSoftLimit / stateCount): Neighbouring compulsory courses conflict probabilistically          (State:0) (Ideal case)   
-* (iterSoftLimit / stateCount) - iterUpperLimit: Neighbouring compulsory courses conflict                          (State:1) (Worst case)
+* 0 - iterSoftLimit: Neighbouring compulsory courses conflict probabilistically          (State:0) (Ideal case)   
+* iterSoftLimit - iterUpperLimit: Neighbouring compulsory courses conflict                          (State:1) (Worst case)
 
 Starting Slot of the week day is 9:30. </br> </br>
 If a department has 11 or more 4th class elective courses active, then that department is marked as congested and some special treatments are applied... </br>
