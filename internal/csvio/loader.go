@@ -62,6 +62,11 @@ func LoadCourses(cfg *scheduler.Configuration, delim rune, ignored []string) ([]
 		fmt.Println("Err01")
 		panic(err)
 	}
+	for _, r := range _reserved {
+		if len(r.StartingTimeSTR) == 4 {
+			r.StartingTimeSTR = "0" + r.StartingTimeSTR
+		}
+	}
 
 	busyFile, err := os.OpenFile(cfg.BlacklistFile, os.O_RDWR, os.ModePerm)
 	if err != nil {
