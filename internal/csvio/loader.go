@@ -255,6 +255,10 @@ func LoadClassrooms(path string, delim rune) []*model.Classroom {
 		panic(err)
 	}
 
+	for _, c := range classrooms {
+		c.AssignAvailableDays()
+	}
+
 	return classrooms
 }
 

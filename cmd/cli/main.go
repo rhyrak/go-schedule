@@ -130,7 +130,6 @@ func main() {
 		for _, c := range classrooms {
 			// Initialize an empty classroom-oriented schedule to keep track of classroom utilization throughout the week
 			c.CreateSchedule(cfg.NumberOfDays, cfg.TimeSlotCount)
-			c.AssignAvailableDays(uniqueDepartments)
 		}
 
 		// Init and assign new conflict probabilities according to state

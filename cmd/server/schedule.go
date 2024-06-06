@@ -16,7 +16,7 @@ func createAndExportSchedule(cfg *scheduler.Configuration) {
 	ignoredCourses := []string{"ENGR450", "IE101", "CENG404"}
 
 	// Parse and instantiate course objects from CSV (ignored courses are not loaded)
-	courses, labs, reserved, _, conflicts, congestedDepartments, uniqueDepartments := csvio.LoadCourses(cfg, ';', ignoredCourses)
+	courses, labs, reserved, _, conflicts, congestedDepartments, _ := csvio.LoadCourses(cfg, ';', ignoredCourses)
 
 	// Start timer
 	var schedule *model.Schedule
@@ -44,7 +44,6 @@ func createAndExportSchedule(cfg *scheduler.Configuration) {
 		for _, c := range classrooms {
 			// Initialize an empty classroom-oriented schedule to keep track of classroom utilization throughout the week
 			c.CreateSchedule(cfg.NumberOfDays, cfg.TimeSlotCount)
-			c.AssignAvailableDays(uniqueDepartments)
 		}
 
 		// Init and assign new conflict probabilities according to state

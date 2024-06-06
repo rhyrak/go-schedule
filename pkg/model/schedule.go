@@ -1,6 +1,9 @@
 package model
 
-import "math/rand"
+import (
+	"math/rand"
+	"slices"
+)
 
 type TimeSlot struct {
 	Courses    []CourseID
@@ -163,14 +166,13 @@ func DeepCopyClassroom(c *Classroom) *Classroom {
 		return nil
 	}
 	newClassroom := &Classroom{
-		FloorNumber:     c.FloorNumber,
-		Capacity:        c.Capacity,
-		ID:              c.ID,
-		AvailableDays:   c.AvailableDays,
-		days:            c.days,
-		slots:           c.slots,
-		AvailabilityMap: make(map[string][]int),
-		schedule:        make([][]CourseID, len(c.schedule)),
+		FloorNumber:   c.FloorNumber,
+		Capacity:      c.Capacity,
+		ID:            c.ID,
+		AvailableDays: c.AvailableDays,
+		days:          c.days,
+		slots:         c.slots,
+		schedule:      make([][]CourseID, len(c.schedule)),
 	}
 
 	// Deep copy the schedule
@@ -179,11 +181,8 @@ func DeepCopyClassroom(c *Classroom) *Classroom {
 		copy(newClassroom.schedule[i], c.schedule[i])
 	}
 
-	// Deep copy the AvailabilityMap
-	for key, value := range c.AvailabilityMap {
-		newClassroom.AvailabilityMap[key] = make([]int, len(value))
-		copy(newClassroom.AvailabilityMap[key], value)
-	}
+	// Shallow copy the AvailabilityMap
+	newClassroom.AvailabilityArray = slices.Clone(c.AvailabilityArray)
 
 	return newClassroom
 }
