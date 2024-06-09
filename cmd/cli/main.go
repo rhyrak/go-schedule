@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"strconv"
 	"time"
 
 	"github.com/rhyrak/go-schedule/internal/csvio"
@@ -25,76 +26,98 @@ var cfg = &scheduler.Configuration{
 	TimeSlotDuration:            60,
 	TimeSlotCount:               9,
 	RelativeConflictProbability: 0.7 * 2, // 70%
-	IterSoftLimit:               2000,    // Feasible limit up until state 1
+	IterSoftLimit:               5000,    // Feasible limit up until state 1
 	DepartmentCongestionLimit:   11,
 	ActivityDay:                 3,
 }
 
 func main() {
+	var errorExists bool = false
+	var fileErrorString string = ""
+	var reportString string = ""
+
 	// Parse and instantiate classroom objects from CSV
-	classrooms := csvio.LoadClassrooms(cfg.ClassroomsFile, ';')
+	classrooms, err, errorString := csvio.LoadClassrooms(cfg.ClassroomsFile, ';')
+
+	if err {
+		errorExists = true
+		fileErrorString = fileErrorString + errorString
+	}
 
 	// Don't load these
 	ignoredCourses := []string{"ENGR450", "IE101", "CENG404"}
 
 	// Parse and instantiate course objects from CSV (ignored courses are not loaded)
-	courses, labs, reserved, busy, conflicts, congestedDepartments, uniqueDepartments := csvio.LoadCourses(cfg, ';', ignoredCourses)
+	courses, labs, reserved, busy, conflicts, congestedDepartments, uniqueDepartments, err, errorString := csvio.LoadCourses(cfg, ';', ignoredCourses)
+
+	if err {
+		errorExists = true
+		fileErrorString = fileErrorString + errorString
+	}
+
+	if errorExists {
+		reportString = "Fatal Error\n" + fileErrorString
+		/* POST/print reportString */
+		fmt.Println(reportString)
+		return
+	}
 
 	fmt.Println("Loading...")
-	fmt.Println()
 
-	fmt.Println("Departments are as below:")
+	reportString = reportString + "Departments are as below:\n"
 	for _, d := range uniqueDepartments {
-		fmt.Println(d)
+		reportString = reportString + d + "\n"
 	}
-	fmt.Println()
+	reportString = reportString + "\n"
 
 	if len(ignoredCourses) != 0 {
-		fmt.Println("Ignored courses are as below:")
+		reportString = reportString + "Ignored courses are as below:\n"
 		for _, g := range ignoredCourses {
-			fmt.Println(g + " is ignored.")
+			reportString = reportString + g + " is ignored.\n"
 		}
-		fmt.Println("")
+		reportString = reportString + "\n"
 	}
 
 	if len(busy) != 0 {
-		fmt.Println("Professors with their busy schedules are as below:")
+		reportString = reportString + "Professors with their busy schedules are as below:\n"
 		for _, b := range busy {
-			fmt.Print(b.Lecturer + " ")
-			fmt.Print("[")
+			reportString = reportString + b.Lecturer + " "
+			reportString = reportString + "["
 			for _, d := range b.Day {
 				switch d {
 				case 0:
-					fmt.Print(" Monday ")
+					reportString = reportString + " Monday "
 				case 1:
-					fmt.Print(" Tuesday ")
+					reportString = reportString + " Tuesday "
 				case 2:
-					fmt.Print(" Wednesday ")
+					reportString = reportString + " Wednesday "
 				case 3:
-					fmt.Print(" Thursday ")
+					reportString = reportString + " Thursday "
 				case 4:
-					fmt.Print(" Friday ")
+					reportString = reportString + " Friday "
 				}
 			}
-			fmt.Println("]")
+			reportString = reportString + "]\n"
 		}
-		fmt.Println()
+		reportString = reportString + "\n"
 	}
 
 	if len(reserved) != 0 {
-		fmt.Println("Courses reserved to certain days and hours are as below:")
+		reportString = reportString + "Courses reserved to certain days and hours are as below:\n"
 		for _, c := range reserved {
-			fmt.Println(c.CourseRef.Department + " " + c.CourseCodeSTR + " " + c.DaySTR + " " + c.StartingTimeSTR)
+			reportString = reportString + c.CourseRef.Department + " " + c.CourseCodeSTR + " " + c.DaySTR + " " + c.StartingTimeSTR
 		}
-		fmt.Println()
+		reportString = reportString + "\n"
 	}
 
+	reportString = reportString + "\n"
+
 	if len(conflicts) != 0 {
-		fmt.Println("Courses that explicitly won't conflict with each other are as below:")
+		reportString = reportString + "Courses that explicitly won't conflict with each other are as below:\n"
 		for _, cc := range conflicts {
-			fmt.Println(cc.Department1 + " " + cc.Course_Code1 + " <-> " + cc.Department2 + " " + cc.Course_Code2)
+			reportString = reportString + cc.Department1 + " " + cc.Course_Code1 + " <-> " + cc.Department2 + " " + cc.Course_Code2 + "\n"
 		}
-		fmt.Println()
+		reportString = reportString + "\n"
 	}
 
 	// Start timer
@@ -109,7 +132,7 @@ func main() {
 	var iterActivityDayDelta int = cfg.IterSoftLimit / stateCount
 	var state int = 0
 	var placementProbability = 0.1
-	unassignedCount := 214748364
+	unassignedCount := 21474836547
 	// Try to create a valid schedule upto iterLimit+1 times
 	for iter = 1; iter <= iterUpperLimit; iter++ {
 		// Increment state every iterState iterations and reset FreeDay fill probability
@@ -148,7 +171,7 @@ func main() {
 		scheduler.FillCourses(courses, labs, schedule, classrooms, placementProbability, cfg.ActivityDay, congestedDepartments, cfg.DepartmentCongestionLimit, state)
 
 		// If schedule is valid, break, if not, shove everything out the window and try again (5dk)
-		valid, sufficientRooms, _, cnt := scheduler.Validate(courses, labs, schedule, classrooms, congestedDepartments, cfg.DepartmentCongestionLimit)
+		_, valid, _, _, cnt := scheduler.Validate(courses, labs, schedule, classrooms, congestedDepartments, cfg.DepartmentCongestionLimit)
 		if valid {
 			optimalSchedule = schedule.DeepCopy()
 			optimalCourses = model.DeepCopyCourses(courses)
@@ -162,10 +185,6 @@ func main() {
 			optimalCourses = model.DeepCopyCourses(courses)
 			optimalLabs = model.DeepCopyLaboratories(labs)
 		}
-		if !sufficientRooms {
-			// Ask user to enter new classroom(s)
-			// Continue with next iteration
-		}
 
 	}
 	end := time.Now().UnixNano()
@@ -174,28 +193,49 @@ func main() {
 	outPath := csvio.ExportSchedule(optimalSchedule, cfg.ExportFile)
 
 	// Validate and print error messages
-	valid, sufficientRooms, msg, uc := scheduler.Validate(optimalCourses, optimalLabs, optimalSchedule, classrooms, congestedDepartments, cfg.DepartmentCongestionLimit)
+	unassignedCourses, valid, sufficientRooms, msg, uc := scheduler.Validate(optimalCourses, optimalLabs, optimalSchedule, classrooms, congestedDepartments, cfg.DepartmentCongestionLimit)
 	if !valid {
-		fmt.Println("Invalid schedule:")
+		errorExists = true
+		reportString = reportString + "Invalid schedule:\n"
 	} else {
-		fmt.Println("Passed all tests")
+		reportString = reportString + "Passed all tests\n"
 	}
 
-	fmt.Print("Unassigned: ")
-	fmt.Println(uc)
+	reportString = reportString + "Unassigned: " + strconv.Itoa(uc) + "\n\n"
 
 	if !sufficientRooms {
-		// do something useful
+		errorExists = true
 	}
 
-	/*
-		for _, c := range classrooms {
-			fmt.Print(c.ID)
-			fmt.Println(c.AvailabilityMap)
-		}
-	*/
+	reportString = reportString + "Classrooms and their occuppied days are as below:\n"
 
-	fmt.Println(msg)
+	for _, c := range classrooms {
+		reportString = reportString + c.ID + " "
+		reportString = reportString + "["
+		for _, d := range c.AvailabilityArray {
+			switch d {
+			case 0:
+				reportString = reportString + " Monday "
+			case 1:
+				reportString = reportString + " Tuesday "
+			case 2:
+				reportString = reportString + " Wednesday "
+			case 3:
+				reportString = reportString + " Thursday "
+			case 4:
+				reportString = reportString + " Friday "
+			}
+		}
+		reportString = reportString + "]\n"
+	}
+
+	reportString = reportString + "\n"
+
+	//fmt.Println(msg)
+	reportString = reportString + msg
+	if errorExists {
+		reportString = "Scheduling Error\n" + reportString
+	}
 
 	c := cfg.RelativeConflictProbability / 2.0 * 100.0
 	if state == 1 {
@@ -204,11 +244,24 @@ func main() {
 
 	// Show how evil the schedule is
 	optimalSchedule.CalculateCost()
-	fmt.Printf("State: %d\n", state)
-	fmt.Printf("Cost: %d\n", optimalSchedule.Cost)
-	fmt.Printf("Iteration: %d\n", iter)
-	fmt.Printf("Sibling Compulsory Conflict Probability: %1.2f%%\n", c)
-	fmt.Printf("Activity Day Placement Probability: %1.2f%%\n", placementProbability*100.0)
-	fmt.Printf("Elapsed Time: %f ms\n", float64(end-start)/1000000.0)
-	fmt.Println("Exported output to: " + outPath)
+	reportString = reportString + fmt.Sprintf("State: %d\n", state)
+	reportString = reportString + fmt.Sprintf("Cost: %d\n", optimalSchedule.Cost)
+	reportString = reportString + fmt.Sprintf("Iteration: %d\n", iter)
+	reportString = reportString + fmt.Sprintf("Sibling Compulsory Conflict Probability: %1.2f%%\n", c)
+	reportString = reportString + fmt.Sprintf("Activity Day Placement Probability: %1.2f%%\n", placementProbability*100.0)
+	reportString = reportString + fmt.Sprintf("Elapsed Time: %f ms\n", float64(end-start)/1000000.0)
+	reportString = reportString + fmt.Sprint("Exported output to: "+outPath+"\n\n")
+
+	if !sufficientRooms {
+		// do something useful
+		var capacityNeeded int = 0
+		for _, c := range unassignedCourses {
+			if c.Number_of_Students > capacityNeeded {
+				capacityNeeded = c.Number_of_Students
+			}
+		}
+		reportString = reportString + "New classroom of capacity " + strconv.Itoa(capacityNeeded) + " needed. Please add it and re-run the program.\n"
+	}
+
+	fmt.Println(reportString)
 }

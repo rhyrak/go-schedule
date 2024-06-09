@@ -30,107 +30,134 @@ func substr(input string, start int, length int) string {
 }
 
 // LoadCourses reads and parses given csv file for course data.
-func LoadCourses(cfg *scheduler.Configuration, delim rune, ignored []string) ([]*model.Course, []*model.Laboratory, []*model.Reserved, []*model.Busy, []*model.Conflict, map[string]int, []string) {
+func LoadCourses(cfg *scheduler.Configuration, delim rune, ignored []string) ([]*model.Course, []*model.Laboratory, []*model.Reserved, []*model.Busy, []*model.Conflict, map[string]int, []string, bool, string) {
 	gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
 		r := csv.NewReader(in)
 		r.Comma = delim
 		return r
 	})
 
+	var errorExists bool = false
+	var reservedErrorExists bool = false
+	var reportString string = ""
+
 	coursesFile, err := os.OpenFile(cfg.CoursesFile, os.O_RDWR, os.ModePerm)
 	if err != nil {
 		fmt.Println("Err00")
-		panic(err)
+		errorExists = true
+		reportString = reportString + "Failed to open " + cfg.CoursesFile + " file. Please make sure the file exists.\n"
 	}
 	defer coursesFile.Close()
 
 	_courses := []*model.Course{}
 	if err := gocsv.UnmarshalFile(coursesFile, &_courses); err != nil {
 		fmt.Println("Err01")
-		panic(err)
+		errorExists = true
+		reportString = reportString + "Failed to parse data from " + cfg.CoursesFile + " file. Please check the data integrity and format.\n"
 	}
 
 	priorityFile, err := os.OpenFile(cfg.PriorityFile, os.O_RDWR, os.ModePerm)
 	if err != nil {
 		fmt.Println("Err00")
-		panic(err)
+		errorExists = true
+		reservedErrorExists = true
+		reportString = reportString + "Failed to open " + cfg.PriorityFile + " file. Please make sure the file exists.\n"
 	}
 	defer priorityFile.Close()
 
 	_reserved := []*model.Reserved{}
 	if err := gocsv.UnmarshalFile(priorityFile, &_reserved); err != nil {
 		fmt.Println("Err01")
-		panic(err)
+		errorExists = true
+		reservedErrorExists = true
+		reportString = reportString + "Failed to parse data from " + cfg.PriorityFile + " file. Please check the data integrity and format.\n"
 	}
-	for _, r := range _reserved {
-		if len(r.StartingTimeSTR) == 4 {
-			r.StartingTimeSTR = "0" + r.StartingTimeSTR
+
+	if !reservedErrorExists {
+		for _, r := range _reserved {
+			if len(r.StartingTimeSTR) == 4 {
+				r.StartingTimeSTR = "0" + r.StartingTimeSTR
+			}
 		}
 	}
 
 	busyFile, err := os.OpenFile(cfg.BlacklistFile, os.O_RDWR, os.ModePerm)
 	if err != nil {
 		fmt.Println("Err00")
-		panic(err)
+		errorExists = true
+		reportString = reportString + "Failed to open " + cfg.BlacklistFile + " file. Please make sure the file exists.\n"
 	}
 	defer busyFile.Close()
 
 	_busy := []*model.BusyCSV{}
 	if err := gocsv.UnmarshalFile(busyFile, &_busy); err != nil {
 		fmt.Println("Err01")
-		panic(err)
+		errorExists = true
+		reportString = reportString + "Failed to parse data from " + cfg.BlacklistFile + " file. Please check the data integrity and format.\n"
 	}
 
 	mandatoryFile, err := os.OpenFile(cfg.MandatoryFile, os.O_RDWR, os.ModePerm)
 	if err != nil {
 		fmt.Println("Err00")
-		panic(err)
+		errorExists = true
+		reportString = reportString + "Failed to open " + cfg.MandatoryFile + " file. Please make sure the file exists.\n"
 	}
 	defer mandatoryFile.Close()
 
 	_mandatory := []*model.Mandatory{}
 	if err := gocsv.UnmarshalFile(mandatoryFile, &_mandatory); err != nil {
 		fmt.Println("Err01")
-		panic(err)
+		errorExists = true
+		reportString = reportString + "Failed to parse data from " + cfg.MandatoryFile + " file. Please check the data integrity and format.\n"
 	}
 
 	conflictFile, err := os.OpenFile(cfg.ConflictsFile, os.O_RDWR, os.ModePerm)
 	if err != nil {
 		fmt.Println("Err00")
-		panic(err)
+		errorExists = true
+		reportString = reportString + "Failed to open " + cfg.ConflictsFile + " file. Please make sure the file exists.\n"
 	}
 	defer conflictFile.Close()
 
 	_conflicts := []*model.Conflict{}
 	if err := gocsv.UnmarshalFile(conflictFile, &_conflicts); err != nil {
 		fmt.Println("Err01")
-		panic(err)
+		errorExists = true
+		reportString = reportString + "Failed to parse data from " + cfg.ConflictsFile + " file. Please check the data integrity and format.\n"
 	}
 
 	splitFile, err := os.OpenFile(cfg.SplitFile, os.O_RDWR, os.ModePerm)
 	if err != nil {
 		fmt.Println("Err00")
-		panic(err)
+		errorExists = true
+		reportString = reportString + "Failed to open " + cfg.SplitFile + " file. Please make sure the file exists.\n"
 	}
 	defer splitFile.Close()
 
 	_splits := []*model.Split{}
 	if err := gocsv.UnmarshalFile(splitFile, &_splits); err != nil {
 		fmt.Println("Err01")
-		panic(err)
+		errorExists = true
+		reportString = reportString + "Failed to parse data from " + cfg.SplitFile + " file. Please check the data integrity and format.\n"
 	}
 
 	externalFile, err := os.OpenFile(cfg.ExternalFile, os.O_RDWR, os.ModePerm)
 	if err != nil {
 		fmt.Println("Err00")
-		panic(err)
+		errorExists = true
+		reportString = reportString + "Failed to open " + cfg.ExternalFile + " file. Please make sure the file exists.\n"
 	}
 	defer externalFile.Close()
 
 	_external := []*model.External{}
 	if err := gocsv.UnmarshalFile(externalFile, &_external); err != nil {
 		fmt.Println("Err01")
-		panic(err)
+		errorExists = true
+		reportString = reportString + "Failed to parse data from " + cfg.ExternalFile + " file. Please check the data integrity and format.\n"
+	}
+
+	if errorExists {
+		return nil, nil, nil, nil, nil, nil, nil, true, reportString
 	}
 
 	busy := []*model.Busy{}
@@ -235,36 +262,41 @@ func LoadCourses(cfg *scheduler.Configuration, delim rune, ignored []string) ([]
 	// Count up 4th class courses
 	congestedDepartments, uniqueDepartments := FindFourthClassCount(courses)
 
-	return courses, labs, reserved, busy, _conflicts, congestedDepartments, uniqueDepartments
+	return courses, labs, reserved, busy, _conflicts, congestedDepartments, uniqueDepartments, false, reportString
 }
 
 // LoadClassrooms reads and parses given csv file for classroom data.
-func LoadClassrooms(path string, delim rune) []*model.Classroom {
+func LoadClassrooms(path string, delim rune) ([]*model.Classroom, bool, string) {
 	gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
 		r := csv.NewReader(in)
 		r.Comma = delim
 		return r
 	})
 
+	var reportString string = ""
+
 	classroomsFile, err := os.OpenFile(path, os.O_RDWR, os.ModePerm)
 	if err != nil {
 		fmt.Println("Err00")
-		panic(err)
+		reportString = reportString + "Failed to open " + path + " file. Please make sure the file exists.\n"
+		return nil, true, reportString
 	}
+
 	defer classroomsFile.Close()
 
 	classrooms := []*model.Classroom{}
 
 	if err := gocsv.UnmarshalFile(classroomsFile, &classrooms); err != nil {
 		fmt.Println("Err01")
-		panic(err)
+		reportString = reportString + "Failed to parse data from " + path + " file. Please check the data integrity and format.\n"
+		return nil, true, reportString
 	}
 
 	for _, c := range classrooms {
 		c.AssignAvailableDays()
 	}
 
-	return classrooms
+	return classrooms, false, reportString
 }
 
 func assignCourseProperties(courses []*model.Course, busy []*model.Busy, splits []*model.Split) ([]*model.Course, []*model.Laboratory) {
