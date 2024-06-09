@@ -273,6 +273,7 @@ func LoadClassrooms(path string, delim rune) ([]*model.Classroom, bool, string) 
 		return r
 	})
 
+	var errorExists bool = false
 	var reportString string = ""
 
 	classroomsFile, err := os.OpenFile(path, os.O_RDWR, os.ModePerm)
@@ -293,7 +294,14 @@ func LoadClassrooms(path string, delim rune) ([]*model.Classroom, bool, string) 
 	}
 
 	for _, c := range classrooms {
-		c.AssignAvailableDays()
+		if !c.AssignAvailableDays() {
+			errorExists = true
+			reportString = reportString + "Invalid data in available_days header for " + c.ID + "\n"
+		}
+	}
+
+	if errorExists {
+		return classrooms, true, reportString
 	}
 
 	return classrooms, false, reportString

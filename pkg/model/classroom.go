@@ -48,7 +48,7 @@ func (c *Classroom) PlaceCourse(day int, slot int, course CourseID) bool {
 	return false
 }
 
-func (c *Classroom) AssignAvailableDays() {
+func (c *Classroom) AssignAvailableDays() bool {
 	days := strings.Split(c.AvailableDays, "-")
 
 	for _, d := range days {
@@ -64,16 +64,9 @@ func (c *Classroom) AssignAvailableDays() {
 			c.AvailabilityArray = append(c.AvailabilityArray, 3)
 		case "friday":
 			c.AvailabilityArray = append(c.AvailabilityArray, 4)
+		default:
+			return false
 		}
 	}
-
-}
-
-func contains(s []int, e int) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-	return false
+	return true
 }
