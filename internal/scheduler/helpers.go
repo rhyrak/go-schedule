@@ -24,7 +24,7 @@ type Configuration struct {
 func NewDefaultConfiguration() *Configuration {
 	return &Configuration{
 		ClassroomsFile:              "./res/private/classrooms.csv",
-		CoursesFile:                 "./res/private/courses2.csv",
+		CoursesFile:                 "./res/private/courses.csv",
 		PriorityFile:                "./res/private/reserved.csv",
 		BlacklistFile:               "./res/private/busy.csv",
 		MandatoryFile:               "./res/private/mandatory.csv",
