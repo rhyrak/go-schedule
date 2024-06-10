@@ -268,7 +268,7 @@ func PlaceReservedCourses(courses []*model.Reserved, schedule *model.Schedule, r
 // Find a fitting classroom
 func findRoom(rooms []*model.Classroom, capacity int, day int, slot int, neededSlots int, department string) *model.Classroom {
 	for _, c := range rooms {
-		if capacity > c.Capacity || !containsINT(c.AvailabilityMap[department], day) {
+		if capacity > c.Capacity || !containsINT(c.AvailabilityArray, day) {
 			continue
 		}
 		roomOk := true

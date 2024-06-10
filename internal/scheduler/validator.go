@@ -8,7 +8,7 @@ import (
 
 // Validate checks schedule for conflicts and unassigned courses.
 // Returns false and a message for invalid schedules.
-func Validate(courses []*model.Course, labs []*model.Laboratory, schedule *model.Schedule, rooms []*model.Classroom, congestedDepartments map[string]int, CongestionLimit int) (bool, bool, string, int) {
+func Validate(courses []*model.Course, labs []*model.Laboratory, schedule *model.Schedule, rooms []*model.Classroom, congestedDepartments map[string]int, CongestionLimit int) ([]*model.Course, bool, bool, string, int) {
 	var message string
 	var valid bool = true
 	var allAssigned bool
@@ -37,11 +37,20 @@ func Validate(courses []*model.Course, labs []*model.Laboratory, schedule *model
 	if unassignedCount > 0 {
 		message = fmt.Sprintf("- There are %d unassigned courses:\n", unassignedCount)
 		for _, un := range unassignedCourses {
-			message += fmt.Sprintf("THEORY    %t %s %s %d %s\n", un.Compulsory, un.Course_Code, un.Department, un.Number_of_Students, un.Lecturer)
+			var ce string = "Compulsory"
+			if !un.Compulsory {
+				ce = "Elective"
+			}
+			message += fmt.Sprintf("IN-CLASS    %s %s %s %d %s\n", ce, un.Course_Code, un.Department, un.Number_of_Students, un.Lecturer)
 		}
 		for _, un := range unassignedLabs {
-			message += fmt.Sprintf("LABORATORY    %t %s %s %d %s\n", un.Compulsory, un.Course_Code, un.Department, un.Number_of_Students, un.Lecturer)
+			var ce string = "Compulsory"
+			if !un.Compulsory {
+				ce = "Elective"
+			}
+			message += fmt.Sprintf("LABORATORY    %s %s %s %d %s\n", ce, un.Course_Code, un.Department, un.Number_of_Students, un.Lecturer)
 		}
+		message += "\n"
 	}
 
 	allAssigned = unassignedCount == 0
@@ -57,6 +66,7 @@ func Validate(courses []*model.Course, labs []*model.Laboratory, schedule *model
 	message += msg
 
 	var sufficientRooms bool = true
+	message = "\n" + message
 
 	// Display messages accordingly
 	if hasClassroomCollision {
@@ -72,24 +82,14 @@ func Validate(courses []*model.Course, labs []*model.Laboratory, schedule *model
 		message = "[  OK]: Course collision check.\n" + message
 	}
 	if !allAssigned {
-		message = "[FAIL]: Course has room check.\n" + message
+		message = "[FAIL]: Course has classroom check.\n" + message
 		valid = false
 		sufficientRooms = false
 	} else {
-		message = "[  OK]: Course has room check.\n" + message
+		message = "[  OK]: Course has classroom check.\n" + message
 	}
-	//var noCongestion bool = true
 
-	// Ignore unassigned courses from congested departments (şüpheli) (WIP)
-	/*
-		for _, c := range unassignedCourses {
-			if !((congestedDepartments[c.Department] >= CongestionLimit) && (!c.Compulsory)) {
-				noCongestion = false
-				return noCongestion, sufficientRooms, message
-			}
-		}
-	*/
-	return valid, sufficientRooms, message, unassignedCount
+	return unassignedCourses, valid, sufficientRooms, message, unassignedCount
 }
 
 func checkCourseCollision(schedule *model.Schedule) (bool, string) {
