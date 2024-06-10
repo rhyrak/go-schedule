@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,39 +11,51 @@ import (
 )
 
 func handleGetSchedule(ctx *gin.Context) {
-	files, err := os.ReadDir("db/generated/")
-	if err != nil {
-		ctx.Status(http.StatusInternalServerError)
+	type ScheduleMeta struct {
+		Id     string `json:"id"`
+		Status string `json:"status"`
+		Report string `json:"report"`
 	}
 
-	var allIDs []string = []string{}
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-		id, ok := strings.CutSuffix(file.Name(), "-schedule.csv")
-		if ok {
-			allIDs = append(allIDs, id)
-		}
+	rows, err := scheduleRepository.Query("SELECT id, status, report FROM schedule")
+	if err != nil {
+		ctx.Status(http.StatusInternalServerError)
+		return
+	}
+	var allScheduless []ScheduleMeta = []ScheduleMeta{}
+	for rows.Next() {
+		var meta ScheduleMeta
+		rows.Scan(&meta.Id, &meta.Status, &meta.Report)
+		allScheduless = append(allScheduless, ScheduleMeta{
+			Id:     meta.Id,
+			Status: meta.Status,
+			Report: meta.Report,
+		})
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"scheduleIds": allIDs,
+		"schedules": allScheduless,
 	})
 }
 
 func handleGetScheduleWithId(ctx *gin.Context) {
 	id := ctx.Param("id")
-	filePath := "db/generated/" + id + "-schedule.csv"
 
-	content, err := os.ReadFile(filePath)
+	rows, err := scheduleRepository.Query("SELECT data FROM schedule where id = ?", id)
 	if err != nil {
+		ctx.Status(http.StatusInternalServerError)
+		return
+	}
+	var data string
+	if rows.Next() {
+		rows.Scan(&data)
+	} else {
 		ctx.Status(http.StatusNotFound)
 		return
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"data": string(content),
+		"data": data,
 	})
 }
 
@@ -108,7 +118,9 @@ func handlePostSchedule(ctx *gin.Context) {
 	cfg.ExportFile = "db/generated/" + timestamp + "-schedule.csv"
 	log.Printf("Generating schedule with the configuration:\n%v\n", cfg)
 
-	go createAndExportSchedule(cfg)
+	stmt, _ := scheduleRepository.Prepare("INSERT INTO schedule (id, data, status, report) VALUES (?, ?, ?, ?)")
+	stmt.Exec(timestamp, "", "in progress", "")
+	go createAndExportSchedule(cfg, timestamp)
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"id": timestamp,

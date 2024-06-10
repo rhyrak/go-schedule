@@ -47,6 +47,21 @@ func ExportSchedule(schedule *model.Schedule, path string) string {
 	return path
 }
 
+// ExportSchedule formats the schedule data into ScheduleCSVRow structs and
+// writes it to the CSV file specified by the given path.
+func ExportScheduleString(schedule *model.Schedule) string {
+	nice := formatAndFilterSchedule(schedule)
+
+	// Write to file
+	str, err := gocsv.MarshalString(&nice)
+	if err != nil {
+		fmt.Println("Err03")
+		panic(err)
+	}
+
+	return str
+}
+
 // PrintSchedule prints weekly schedule grouped by department name.
 func PrintSchedule(schedule *model.Schedule) {
 	days := []string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday"}

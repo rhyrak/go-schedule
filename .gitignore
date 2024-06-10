@@ -1,6 +1,7 @@
 .vscode/
 *.csv
 bin/*
+scheduler.db
 
 !bin/.gitkeep
 !res/private/.gitkeep

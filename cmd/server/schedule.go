@@ -12,7 +12,7 @@ import (
 	"github.com/rhyrak/go-schedule/pkg/model"
 )
 
-func createAndExportSchedule(cfg *scheduler.Configuration) {
+func createAndExportSchedule(cfg *scheduler.Configuration, timestamp string) {
 	var errorExists bool = false
 	var fileErrorString string = ""
 	var reportString string = ""
@@ -38,7 +38,8 @@ func createAndExportSchedule(cfg *scheduler.Configuration) {
 
 	if errorExists {
 		reportString = "Fatal Error\n" + fileErrorString
-		/* POST/print reportString */
+		stmt, _ := scheduleRepository.Prepare("UPDATE schedule SET data = ?, status = ?, report = ? WHERE ID = ?;")
+		stmt.Exec("invalid", "failed", reportString, timestamp)
 		log.Println(reportString)
 		return
 	}
@@ -86,9 +87,8 @@ func createAndExportSchedule(cfg *scheduler.Configuration) {
 	if len(reserved) != 0 {
 		reportString = reportString + "Courses reserved to certain days and hours are as below:\n"
 		for _, c := range reserved {
-			reportString = reportString + c.CourseRef.Department + " " + c.CourseCodeSTR + " " + c.DaySTR + " " + c.StartingTimeSTR
+			reportString = reportString + c.CourseRef.Department + " " + c.CourseCodeSTR + " " + c.DaySTR + " " + c.StartingTimeSTR + "\n"
 		}
-		reportString = reportString + "\n"
 	}
 
 	reportString = reportString + "\n"
@@ -170,9 +170,6 @@ func createAndExportSchedule(cfg *scheduler.Configuration) {
 
 	end := time.Now().UnixNano()
 
-	// Write newly created schedule to disk
-	_ = csvio.ExportSchedule(optimalSchedule, cfg.ExportFile)
-
 	// Validate and print error messages
 	unassignedCourses, valid, sufficientRooms, msg, uc := scheduler.Validate(optimalCourses, optimalLabs, optimalSchedule, classrooms, congestedDepartments, cfg.DepartmentCongestionLimit)
 	if !valid {
@@ -231,7 +228,8 @@ func createAndExportSchedule(cfg *scheduler.Configuration) {
 	reportString = reportString + fmt.Sprintf("Sibling Compulsory Conflict Probability: %1.2f%%\n", c)
 	reportString = reportString + fmt.Sprintf("Activity Day Placement Probability: %1.2f%%\n", placementProbability*100.0)
 	reportString = reportString + fmt.Sprintf("Elapsed Time: %f ms\n", float64(end-start)/1000000.0)
-	reportString = reportString + fmt.Sprint("Exported output to: "+cfg.ExportFile+"\n\n")
+	// reportString = reportString + fmt.Sprint("Exported output to: "+cfg.ExportFile+"\n\n")
+	reportString = reportString + "\n\n"
 
 	if !sufficientRooms {
 		// do something useful
@@ -244,6 +242,9 @@ func createAndExportSchedule(cfg *scheduler.Configuration) {
 		reportString = reportString + "New classroom of capacity " + strconv.Itoa(capacityNeeded) + " needed. Please add it and re-run the program.\n"
 	}
 
-	/* POST reportString */
 	log.Println(reportString)
+	scheduleData := csvio.ExportScheduleString(schedule)
+
+	stmt, _ := scheduleRepository.Prepare("UPDATE schedule SET data = ?, status = ?, report = ? WHERE ID = ?;")
+	stmt.Exec(scheduleData, "success", reportString, timestamp)
 }
