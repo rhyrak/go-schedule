@@ -36,7 +36,7 @@ func NewDefaultConfiguration() *Configuration {
 		TimeSlotDuration:            60,
 		TimeSlotCount:               9,
 		RelativeConflictProbability: 0.7 * 2, // 70%
-		IterSoftLimit:               2000,    // Feasible limit up until state 1
+		IterSoftLimit:               5000,    // Feasible limit up until state 1
 		DepartmentCongestionLimit:   11,
 		ActivityDay:                 3,
 	}
