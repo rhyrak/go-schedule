@@ -59,6 +59,27 @@ func handleGetScheduleWithId(ctx *gin.Context) {
 	})
 }
 
+func handleDeleteScheduleWithId(ctx *gin.Context) {
+	id := ctx.Param("id")
+
+	rows, err := scheduleRepository.Query("DELETE FROM schedule where id = ?", id)
+	if err != nil {
+		ctx.Status(http.StatusInternalServerError)
+		return
+	}
+	var data string
+	if rows.Next() {
+		rows.Scan(&data)
+	} else {
+		ctx.Status(http.StatusNotFound)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"data": data,
+	})
+}
+
 func handlePostSchedule(ctx *gin.Context) {
 	timestamp := fmt.Sprintf("%d", time.Now().Unix())
 	cfg := scheduler.NewDefaultConfiguration()
