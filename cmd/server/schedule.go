@@ -110,20 +110,20 @@ func createAndExportSchedule(cfg *scheduler.Configuration, timestamp string) {
 	var iter int
 	var stateCount int = 2
 	var iterUpperLimit int = cfg.IterSoftLimit + 4999 // Extend final state by 5000 iterations (Doomsday)
-	var iterStateTransition int = cfg.IterSoftLimit / stateCount
+	var iterActivityDayDelta int = cfg.IterSoftLimit / stateCount
 	var state int = 0
 	var placementProbability = 0.1
-	unassignedCount := 214748364
+	unassignedCount := 21474836547
 	// Try to create a valid schedule upto iterLimit+1 times
 	for iter = 1; iter <= iterUpperLimit; iter++ {
 		// Increment state every iterState iterations and reset FreeDay fill probability
-		if iter%iterStateTransition == 0 {
+		if iter%cfg.IterSoftLimit == 0 {
 			state++
 			placementProbability = 0.1
 		}
 
 		// Increment fill probabilty of Activity Day from 10% to 60% over the course of state iterations
-		placementProbability = placementProbability + (1 / float64(iterStateTransition*2))
+		placementProbability = placementProbability + (1 / float64(iterActivityDayDelta*4))
 
 		// Keep going in 2nd state, Also fully unlock Activity Day
 		if state >= stateCount-1 {
